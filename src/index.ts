@@ -954,11 +954,13 @@ server.tool(
   "bing_analytics_page",
   "Get page performance stats from Bing Webmaster Tools (Top Pages)",
   {
-    siteUrl: z.string().describe("The URL of the site")
+    siteUrl: z.string().describe("The URL of the site"),
+    startDate: z.string().optional().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().optional().describe("End date (YYYY-MM-DD)")
   },
-  async ({ siteUrl }) => {
+  async ({ siteUrl, startDate, endDate }) => {
     try {
-      const results = await bingAnalytics.getPageStats(siteUrl);
+      const results = await bingAnalytics.getPageStats(siteUrl, startDate, endDate);
       return {
         content: [{ type: "text", text: JSON.stringify(results, null, 2) }]
       };
@@ -973,11 +975,13 @@ server.tool(
   "Get query performance stats for a specific page from Bing Webmaster Tools",
   {
     siteUrl: z.string().describe("The URL of the site"),
-    pageUrl: z.string().describe("The URL of the specific page")
+    pageUrl: z.string().describe("The URL of the specific page"),
+    startDate: z.string().optional().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().optional().describe("End date (YYYY-MM-DD)")
   },
-  async ({ siteUrl, pageUrl }) => {
+  async ({ siteUrl, pageUrl, startDate, endDate }) => {
     try {
-      const results = await bingAnalytics.getPageQueryStats(siteUrl, pageUrl);
+      const results = await bingAnalytics.getPageQueryStats(siteUrl, pageUrl, startDate, endDate);
       return {
         content: [{ type: "text", text: JSON.stringify(results, null, 2) }]
       };
@@ -991,11 +995,13 @@ server.tool(
   "bing_get_top_queries",
   "Alias for bing_analytics_query. Get top queries for a site.",
   {
-    siteUrl: z.string().describe("The URL of the site")
+    siteUrl: z.string().describe("The URL of the site"),
+    startDate: z.string().optional().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().optional().describe("End date (YYYY-MM-DD)")
   },
-  async ({ siteUrl }) => {
+  async ({ siteUrl, startDate, endDate }) => {
     try {
-      const results = await bingAnalytics.getQueryStats(siteUrl);
+      const results = await bingAnalytics.getQueryStats(siteUrl, startDate, endDate);
       return {
         content: [{ type: "text", text: JSON.stringify(results, null, 2) }]
       };
@@ -1027,11 +1033,13 @@ server.tool(
   "bing_analytics_query_page",
   "Get combined query and page performance stats for a site",
   {
-    siteUrl: z.string().describe("The URL of the site")
+    siteUrl: z.string().describe("The URL of the site"),
+    startDate: z.string().optional().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().optional().describe("End date (YYYY-MM-DD)")
   },
-  async ({ siteUrl }) => {
+  async ({ siteUrl, startDate, endDate }) => {
     try {
-      const results = await bingAnalytics.getQueryPageStats(siteUrl);
+      const results = await bingAnalytics.getQueryPageStats(siteUrl, startDate, endDate);
       return {
         content: [{ type: "text", text: JSON.stringify(results, null, 2) }]
       };
@@ -1623,115 +1631,166 @@ server.prompt(
   "analyze-site-performance",
   {
     siteUrl: z.string().describe("The URL of the site to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)")
+    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    startDate: z.string().optional().describe("Start date (YYYY-MM-DD), defaults to 1 month ago"),
+    endDate: z.string().optional().describe("End date (YYYY-MM-DD), defaults to today")
   },
-  ({ siteUrl, engine = "google" }) => ({
-    messages: [{
-      role: "user",
-      content: {
-        type: "text",
-        text: `Please analyze the performance of the site ${siteUrl} on ${engine === 'google' ? 'Google' : 'Bing'} for the last 28 days.
+  ({ siteUrl, engine = "google", startDate, endDate }) => {
+    const end = endDate || new Date().toISOString().split('T')[0];
+    const start = startDate || (() => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - 1);
+      return d.toISOString().split('T')[0];
+    })();
+
+    return {
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: `Please analyze the performance of the site ${siteUrl} on ${engine === 'google' ? 'Google' : 'Bing'} for the period ${start} to ${end}.
+        
         ${engine === 'google'
-            ? "Use the 'analytics_performance_summary' tool to get high-level metrics, and 'analytics_query' to dig deeper into top queries and pages if needed."
-            : "Use the 'bing_analytics_query' tool to get query stats and 'bing_analytics_page' for page-level performance."}
+              ? `Use the 'analytics_query' tool with startDate='${start}' and endDate='${end}' to get detailed metrics.`
+              : `Use the 'bing_analytics_query' tool with startDate='${start}' and endDate='${end}' to get query stats and 'bing_analytics_page' for page-level performance.`}
+        
         Provide a summary of the site's health and any opportunities for improvement on ${engine === 'google' ? 'Google' : 'Bing'}.`
-      }
-    }]
-  })
+        }
+      }]
+    };
+  }
 );
 
 server.prompt(
   "compare-performance",
   {
     siteUrl: z.string().describe("The URL of the site to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)")
+    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    months: z.number().optional().describe("Number of months to compare (default: 1)")
   },
-  ({ siteUrl, engine = "google" }) => ({
-    messages: [{
-      role: "user",
-      content: {
-        type: "text",
-        text: `Compare the performance of ${siteUrl} on ${engine === 'google' ? 'Google' : 'Bing'} for this week vs last week.
+  ({ siteUrl, engine = "google", months = 1 }) => {
+    const end1 = new Date().toISOString().split('T')[0];
+    const start1 = (() => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - months);
+      return d.toISOString().split('T')[0];
+    })();
+    const end2 = start1;
+    const start2 = (() => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - (months * 2));
+      return d.toISOString().split('T')[0];
+    })();
+
+    return {
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: `Compare the performance of ${siteUrl} on ${engine === 'google' ? 'Google' : 'Bing'} for the period ${start1} to ${end1} vs ${start2} to ${end2}.
 
 ${engine === 'google'
-            ? `Use the 'analytics_compare_periods' tool to compare the two periods:
-- Period 1 (this week): last 7 days ending 3 days ago (to account for data delay)
-- Period 2 (last week): the 7 days before that
+              ? `Use the 'analytics_compare_periods' tool with:
+- period1Start: '${start1}', period1End: '${end1}'
+- period2Start: '${start2}', period2End: '${end2}'
 
 Analyze the changes in clicks, impressions, CTR, and position.
 Highlight any significant improvements or declines.
 If there are notable changes, use 'analytics_top_queries' to identify which queries are driving the change.`
-            : `Use the 'bing_analytics_compare_periods' tool to compare the two periods.
-Define two 7-day ranges (e.g., current period and previous period).
+              : `Use the 'bing_analytics_compare_periods' tool with:
+- startDate1: '${start1}', endDate1: '${end1}'
+- startDate2: '${start2}', endDate2: '${end2}'
 
 Analyze the changes in clicks, impressions, CTR, and position.
 Highlight any significant improvements or declines.
-Use 'bing_analytics_query' to identify which queries are driving changes in traffic.`
-          }`
-      }
-    }]
-  })
+Use 'bing_analytics_query' with date filters to identify which queries are driving changes in traffic.`
+            }`
+        }
+      }]
+    };
+  }
 );
 
 server.prompt(
   "find-declining-pages",
   {
     siteUrl: z.string().describe("The URL of the site to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)")
+    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    months: z.number().optional().describe("Number of months to analyze (default: 1)")
   },
-  ({ siteUrl, engine = "google" }) => ({
-    messages: [{
-      role: "user",
-      content: {
-        type: "text",
-        text: `Find pages on ${siteUrl} that are losing traffic on ${engine === 'google' ? 'Google' : 'Bing'}.
+  ({ siteUrl, engine = "google", months = 1 }) => {
+    const end = new Date().toISOString().split('T')[0];
+    const start = (() => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - months);
+      return d.toISOString().split('T')[0];
+    })();
+
+    return {
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: `Find pages on ${siteUrl} that are losing traffic on ${engine === 'google' ? 'Google' : 'Bing'} between ${start} and ${end}.
 
 ${engine === 'google'
-            ? `Steps:
-1. Use 'analytics_compare_periods' to compare this week vs last week overall
-2. Use 'analytics_query' with dimension 'page' to get page-level data for both periods
+              ? `Steps:
+1. Use 'analytics_compare_periods' to compare this period (${start} to ${end}) vs the previous ${months} month(s)
+2. Use 'analytics_query' with dimension 'page' to get page-level data
 3. Identify pages with significant click/impression drops`
-            : `Steps:
+              : `Steps:
 1. Use 'bing_analytics_compare_periods' to identify overall traffic direction.
-2. Use 'bing_analytics_page' to get top pages.
+2. Use 'bing_analytics_page' with startDate='${start}' and endDate='${end}' to get top pages.
 3. Use 'bing_analytics_page_query' for specific pages to see which queries dropped.`
-          }
+            }
 
 For each declining page, provide:
 - The URL
 - Previous vs current performance
 - Possible reasons and recommendations`
-      }
-    }]
-  })
+        }
+      }]
+    };
+  }
 );
 
 server.prompt(
   "keyword-opportunities",
   {
     siteUrl: z.string().describe("The URL of the site to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)")
+    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    months: z.number().optional().describe("Number of months of data to analyze (default: 3)")
   },
-  ({ siteUrl, engine = "google" }) => ({
-    messages: [{
-      role: "user",
-      content: {
-        type: "text",
-        text: `Find keyword opportunities for ${siteUrl} on ${engine === 'google' ? 'Google' : 'Bing'}.
+  ({ siteUrl, engine = "google", months = 3 }) => {
+    const end = new Date().toISOString().split('T')[0];
+    const start = (() => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - months);
+      return d.toISOString().split('T')[0];
+    })();
 
-${engine === 'google'
-            ? "Use 'analytics_top_queries' or 'seo_low_hanging_fruit' to find high-potential targets."
-            : "Use 'bing_opportunity_finder' or 'bing_striking_distance' to find high-potential keywords."}
-
-Analyze for:
-1. **Low CTR, High Impressions**: Queries where you rank but don't get clicks
-2. **High Position (>10), Good Impressions**: Queries not on page 1 (Striking Distance)
-3. **New Ranking Queries**: Queries that appeared recently (use comparison tools)
-
-Provide specific recommendations for the top 5 opportunities.`
-      }
-    }]
-  })
+    return {
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: `Find keyword opportunities for ${siteUrl} on ${engine === 'google' ? 'Google' : 'Bing'} for the last ${months} months (${start} to ${end}).
+        
+        ${engine === 'google'
+              ? "Use 'analytics_top_queries' or 'seo_low_hanging_fruit' to find high-potential targets."
+              : `Use 'bing_opportunity_finder' or 'bing_striking_distance' to find high-potential keywords.
+               Use the filtering parameters (startDate='${start}', endDate='${end}') where available in Bing tools.`}
+        
+        Analyze for:
+        1. **Low CTR, High Impressions**: Queries where you rank but don't get clicks
+        2. **High Position (>10), Good Impressions**: Queries not on page 1 (Striking Distance)
+        3. **New Ranking Queries**: Queries that appeared recently (use comparison tools)
+        
+        Provide specific recommendations for the top 5 opportunities.`
+        }
+      }]
+    };
+  }
 );
 
 server.prompt(
@@ -1739,17 +1798,26 @@ server.prompt(
   {
     siteUrl: z.string().describe("The URL of the site"),
     pageUrl: z.string().describe("The URL of the new content to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)")
+    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    months: z.number().optional().describe("Number of months to analyze (default: 1)")
   },
-  ({ siteUrl, pageUrl, engine = "google" }) => ({
-    messages: [{
-      role: "user",
-      content: {
-        type: "text",
-        text: `Analyze the impact of new content at ${pageUrl} on site ${siteUrl} in ${engine === 'google' ? 'Google' : 'Bing'}.
+  ({ siteUrl, pageUrl, engine = "google", months = 1 }) => {
+    const end = new Date().toISOString().split('T')[0];
+    const start = (() => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - months);
+      return d.toISOString().split('T')[0];
+    })();
+
+    return {
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: `Analyze the impact of new content at ${pageUrl} on site ${siteUrl} in ${engine === 'google' ? 'Google' : 'Bing'} for the period ${start} to ${end}.
 
 1. Use '${engine === 'google' ? 'inspection_inspect' : 'bing_url_info'}' to check indexing status.
-2. Use '${engine === 'google' ? 'analytics_query' : 'bing_analytics_page_query'}' to get performance for this specific URL.
+2. Use '${engine === 'google' ? 'analytics_query' : 'bing_analytics_page_query'}' with startDate='${start}' and endDate='${end}' to get performance for this specific URL.
 3. Identify which queries are driving traffic to this page.
 
 Provide:
@@ -1757,27 +1825,37 @@ Provide:
 - Key metrics (clicks, impressions, CTR, position)
 - Top queries ranking for this page
 - Recommendations for improvement`
-      }
-    }]
-  })
+        }
+      }]
+    };
+  }
 );
 
 server.prompt(
   "mobile-vs-desktop",
   {
     siteUrl: z.string().describe("The URL of the site to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)")
+    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    months: z.number().optional().describe("Number of months to analyze (default: 1)")
   },
-  ({ siteUrl, engine = "google" }) => ({
-    messages: [{
-      role: "user",
-      content: {
-        type: "text",
-        text: `Compare mobile vs desktop performance for ${siteUrl} on ${engine === 'google' ? 'Google' : 'Bing'}.
+  ({ siteUrl, engine = "google", months = 1 }) => {
+    const end = new Date().toISOString().split('T')[0];
+    const start = (() => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - months);
+      return d.toISOString().split('T')[0];
+    })();
+
+    return {
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: `Compare mobile vs desktop performance for ${siteUrl} on ${engine === 'google' ? 'Google' : 'Bing'} from ${start} to ${end}.
 
 ${engine === 'google'
-            ? "Use 'analytics_query' with dimension 'device' to get device-level metrics."
-            : "Note: Bing Webmaster API provides limited native device breakdown via the public API, but check if 'bing_analytics_query' or 'bing_analytics_page' results show device distinctions if available."}
+              ? `Use 'analytics_query' with dimension 'device', startDate='${start}', and endDate='${end}' to get device-level metrics.`
+              : "Note: Bing Webmaster API provides limited native device breakdown via the public API, but check if 'bing_analytics_query' or 'bing_analytics_page' results show device distinctions if available."}
 
 Analyze:
 1. Click and impression distribution across devices (if data available)
@@ -1789,38 +1867,49 @@ If there's a significant gap, investigate:
 - Recommend specific improvements.
 
 Provide a summary with actionable recommendations.`
-      }
-    }]
-  })
+        }
+      }]
+    };
+  }
 );
 
 server.prompt(
   "site-health-check",
   {
     siteUrl: z.string().optional().describe("Optional. The URL of a specific site to check."),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)")
+    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    months: z.number().optional().describe("Number of months to analyze for trends (default: 1)")
   },
-  ({ siteUrl, engine = "google" }) => ({
-    messages: [{
-      role: "user",
-      content: {
-        type: "text",
-        text: `Run a comprehensive health check for ${siteUrl ? siteUrl : 'all verified sites'} on ${engine === 'google' ? 'Google' : 'Bing'}.
+  ({ siteUrl, engine = "google", months = 1 }) => {
+    const end = new Date().toISOString().split('T')[0];
+    const start = (() => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - months);
+      return d.toISOString().split('T')[0];
+    })();
+
+    return {
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: `Run a comprehensive health check for ${siteUrl ? siteUrl : 'all verified sites'} on ${engine === 'google' ? 'Google' : 'Bing'} analyzing the period ${start} to ${end}.
 
 Use the '${engine === 'google' ? 'sites_health_check' : 'bing_sites_health'}' tool.
 
 Then for each site in the results:
 1. **Summarize the status** (healthy / warning / critical).
-2. **Performance:** Report changes in clicks, impressions, CTR, and position.
+2. **Performance:** Report changes in clicks, impressions, CTR, and position by comparing this period to the previous one.
 3. **Sitemaps:** Note any errors or warnings (use '${engine === 'google' ? 'sitemaps_list' : 'bing_crawl_issues'}').
-4. **Anomalies:** Highlight any traffic drops (use '${engine === 'google' ? 'analytics_anomalies' : 'bing_analytics_detect_anomalies'}').
+4. **Anomalies:** Highlight any traffic drops (use '${engine === 'google' ? 'analytics_anomalies' : 'bing_analytics_detect_anomalies'}' with appropriate day counts).
 
 If any site has a 'critical' or 'warning' status:
 - For critical drops, use '${engine === 'google' ? 'analytics_drop_attribution' : 'bing_analytics_drop_attribution'}'.
 - Provide 3 prioritized action items.`
-      }
-    }]
-  })
+        }
+      }]
+    };
+  }
 );
 
 async function main() {

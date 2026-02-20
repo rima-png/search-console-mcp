@@ -1,35 +1,92 @@
 import { getBingClient, BingQueryStats, BingPageStats, BingQueryPageStats, BingRankAndTrafficStats } from '../client.js';
 
 /**
- * Get query performance stats for a Bing site.
+ * Get query performance stats for a Bing site with optional date filtering.
  */
-export async function getQueryStats(siteUrl: string): Promise<BingQueryStats[]> {
+export async function getQueryStats(
+    siteUrl: string,
+    startDate?: string,
+    endDate?: string
+): Promise<BingQueryStats[]> {
     const client = await getBingClient();
-    return client.getQueryStats(siteUrl);
+    const stats = await client.getQueryStats(siteUrl);
+
+    if (!startDate && !endDate) return stats;
+
+    const start = startDate ? new Date(startDate) : new Date(0);
+    const end = endDate ? new Date(endDate) : new Date();
+
+    return stats.filter(row => {
+        const d = new Date(row.Date);
+        return d >= start && d <= end;
+    });
 }
 
 /**
- * Get page performance stats (top pages) for a Bing site.
+ * Get page performance stats (top pages) for a Bing site with optional date filtering.
  */
-export async function getPageStats(siteUrl: string): Promise<BingPageStats[]> {
+export async function getPageStats(
+    siteUrl: string,
+    startDate?: string,
+    endDate?: string
+): Promise<BingPageStats[]> {
     const client = await getBingClient();
-    return client.getPageStats(siteUrl);
+    const stats = await client.getPageStats(siteUrl);
+
+    if (!startDate && !endDate) return stats;
+
+    const start = startDate ? new Date(startDate) : new Date(0);
+    const end = endDate ? new Date(endDate) : new Date();
+
+    return stats.filter(row => {
+        const d = new Date(row.Date);
+        return d >= start && d <= end;
+    });
 }
 
 /**
- * Get query stats for a specific page on a Bing site.
+ * Get query stats for a specific page on a Bing site with optional date filtering.
  */
-export async function getPageQueryStats(siteUrl: string, pageUrl: string): Promise<BingQueryStats[]> {
+export async function getPageQueryStats(
+    siteUrl: string,
+    pageUrl: string,
+    startDate?: string,
+    endDate?: string
+): Promise<BingQueryStats[]> {
     const client = await getBingClient();
-    return client.getPageQueryStats(siteUrl, pageUrl);
+    const stats = await client.getPageQueryStats(siteUrl, pageUrl);
+
+    if (!startDate && !endDate) return stats;
+
+    const start = startDate ? new Date(startDate) : new Date(0);
+    const end = endDate ? new Date(endDate) : new Date();
+
+    return stats.filter(row => {
+        const d = new Date(row.Date);
+        return d >= start && d <= end;
+    });
 }
 
 /**
- * Get combined query and page performance stats.
+ * Get combined query and page performance stats with optional date filtering.
  */
-export async function getQueryPageStats(siteUrl: string): Promise<BingQueryPageStats[]> {
+export async function getQueryPageStats(
+    siteUrl: string,
+    startDate?: string,
+    endDate?: string
+): Promise<BingQueryPageStats[]> {
     const client = await getBingClient();
-    return client.getQueryPageStats(siteUrl);
+    const stats = await client.getQueryPageStats(siteUrl);
+
+    if (!startDate && !endDate) return stats;
+
+    const start = startDate ? new Date(startDate) : new Date(0);
+    const end = endDate ? new Date(endDate) : new Date();
+
+    return stats.filter(row => {
+        const d = new Date(row.Date);
+        return d >= start && d <= end;
+    });
 }
 
 /**
