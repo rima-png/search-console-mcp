@@ -25,6 +25,7 @@ import * as bingHealth from "./bing/tools/sites-health.js";
 import * as bingSeoInsights from "./bing/tools/seo-insights.js";
 import * as indexNow from "./bing/tools/index-now.js";
 import * as bingAdvancedAnalytics from "./bing/tools/advanced-analytics.js";
+import * as compareEnginesTool from "./common/tools/compare-engines/index.js";
 import {
   bingApiDocs,
   indexNowDocs,
@@ -282,6 +283,31 @@ server.tool(
   async ({ siteUrl, period1Start, period1End, period2Start, period2End }) => {
     try {
       const result = await analytics.comparePeriods(siteUrl, period1Start, period1End, period2Start, period2End);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "compare_engines",
+  "Compare performance data between Google and Bing for a specific dimension (query, page, etc).",
+  {
+    siteUrl: z.string().describe("The URL of the site"),
+    dimension: z.enum(["query", "page", "country", "device"]).describe("Dimension to compare"),
+    startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().describe("End date (YYYY-MM-DD)"),
+    minImpressions: z.number().optional().describe("Minimum impressions threshold"),
+    minClicks: z.number().optional().describe("Minimum clicks threshold"),
+    limit: z.number().optional().describe("Max rows to return per engine (default: 1000)"),
+    offset: z.number().optional().describe("Offset for pagination")
+  },
+  async (args) => {
+    try {
+      const result = await compareEnginesTool.compareEngines(args);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
