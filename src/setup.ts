@@ -6,7 +6,9 @@ import { createInterface } from 'readline';
 import { homedir } from 'os';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
-import { startLocalFlow, saveTokens, getUserEmail, logout, DEFAULT_CLIENT_ID, DEFAULT_CLIENT_SECRET } from './google/client.js';
+import { startLocalFlow, saveTokens, getUserEmail, logout, loadTokens, getSearchConsoleClient, DEFAULT_CLIENT_ID, DEFAULT_CLIENT_SECRET } from './google/client.js';
+import { getBingClient } from './bing/client.js';
+import { colors, printBoxHeader, printStatusLine } from './utils/ui.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -24,26 +26,60 @@ function ask(question: string): Promise<string> {
     });
 }
 
+
 function printHeader() {
-    console.log('\n╔══════════════════════════════════════════════════════════════╗');
-    console.log('║          🔧 Search Console MCP - Setup Wizard               ║');
-    console.log('╚══════════════════════════════════════════════════════════════╝\n');
+    printBoxHeader('Setup Wizard');
 }
 
 function printStep(num: number, text: string) {
-    console.log(`\n📌 Step ${num}: ${text}\n`);
+    console.log(`\n${colors.bold}${colors.cyan}Step ${num}${colors.reset} ${colors.dim}─${colors.reset} ${colors.bold}${text}${colors.reset}\n`);
 }
 
 function printSuccess(text: string) {
-    console.log(`✅ ${text}`);
+    console.log(`${colors.green}✔${colors.reset} ${text}`);
 }
 
 function printError(text: string) {
-    console.log(`❌ ${text}`);
+    console.log(`${colors.red}✘${colors.reset} ${colors.bold}${text}${colors.reset}`);
 }
 
 function printInfo(text: string) {
-    console.log(`ℹ️  ${text}`);
+    console.log(`${colors.blue}ℹ${colors.reset} ${colors.dim}${text}${colors.reset}`);
+}
+
+async function detectConfig() {
+    const results = {
+        googleOAuth: false,
+        googleServiceAccount: false,
+        bing: false,
+    };
+
+    // 1. Google OAuth
+    try {
+        const tokens = await loadTokens();
+        if (tokens) results.googleOAuth = true;
+    } catch (e) { }
+
+    // 2. Google Service Account
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS || (process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY)) {
+        results.googleServiceAccount = true;
+    }
+
+    // 3. Bing
+    if (process.env.BING_API_KEY) results.bing = true;
+
+    return results;
+}
+
+function printDetectionSummary(results: any) {
+    const googleConnected = results.googleOAuth || results.googleServiceAccount;
+    const bingConnected = results.bing;
+
+    console.log(`${colors.bold}${colors.dim}🔍 Connection Status${colors.reset}\n`);
+
+    printStatusLine('Google', googleConnected);
+    printStatusLine('Bing', bingConnected);
+    console.log('');
 }
 
 interface ServiceAccountKey {
@@ -332,25 +368,122 @@ async function setupBing() {
     rl.close();
 }
 
+async function checkAndShowSites(engine: 'google' | 'bing', configStatus: any): Promise<boolean> {
+    const isConnected = engine === 'google' ? (configStatus.googleOAuth || configStatus.googleServiceAccount) : configStatus.bing;
+    if (!isConnected) return true;
+
+    const label = engine === 'google' ? 'Google Search Console' : 'Bing Webmaster Tools';
+    console.log(`${colors.green}✔ ${label} is already connected!${colors.reset}`);
+
+    try {
+        if (engine === 'google') {
+            const client = await getSearchConsoleClient();
+            const response = await client.sites.list();
+            const sites = response.data.siteEntry || [];
+            console.log(`\n${colors.bold}Your verified Google sites:${colors.reset}`);
+            sites.slice(0, 10).forEach(s => {
+                let displayUrl = (s.siteUrl || '').trim();
+                if (displayUrl.startsWith('sc-domain:')) {
+                    displayUrl = displayUrl.substring(10);
+                } else if (displayUrl.startsWith('sc-ptr:')) {
+                    displayUrl = displayUrl.substring(7);
+                }
+                console.log(`  • ${displayUrl}`);
+            });
+            if (sites.length > 10) console.log(`  ... and ${sites.length - 10} more`);
+        } else {
+            const client = await getBingClient();
+            const sites = await client.getSiteList();
+            console.log(`\n${colors.bold}Your verified Bing sites:${colors.reset}`);
+            sites.slice(0, 10).forEach(s => console.log(`  • ${s.Url}`));
+            if (sites.length > 10) console.log(`  ... and ${sites.length - 10} more`);
+        }
+    } catch (e) {
+        console.log(`${colors.dim} (Could not fetch site list)${colors.reset}`);
+    }
+
+    const reconf = await ask(`\nWould you like to reconfigure ${label.split(' ')[0]}? (y/N): `);
+    return reconf.toLowerCase().startsWith('y');
+}
+
+async function handleGoogleFlow(configStatus: any, forceSubMenu = false) {
+    if (!forceSubMenu) {
+        const shouldProceed = await checkAndShowSites('google', configStatus);
+        if (!shouldProceed) {
+            console.log(`\n${colors.green}✔${colors.reset} ${colors.bold}Configuration untouched. You're ready to roll!${colors.reset}`);
+            rl.close();
+            return;
+        }
+    }
+    await googleSubMenu(configStatus);
+}
+
+async function handleBingFlow(configStatus: any) {
+    const shouldProceed = await checkAndShowSites('bing', configStatus);
+    if (!shouldProceed) {
+        console.log(`\n${colors.green}✔${colors.reset} ${colors.bold}Configuration untouched. You're ready to roll!${colors.reset}`);
+        rl.close();
+        return;
+    }
+    await setupBing();
+}
+
 export async function main() {
     printHeader();
-    console.log('What would you like to configure?');
 
-    console.log('\n1. Google Search Console (OAuth 2.0 - Recommended)');
-    console.log('2. Google Search Console (Service Account - Advanced)');
-    console.log('3. Bing Webmaster Tools (API Key)');
+    const args = process.argv.slice(2);
+    const engineFlag = args.find(a => a.startsWith('--engine='))?.split('=')[1]?.toLowerCase();
+    const configStatus = await detectConfig();
 
-    const choice = await ask('\nEnter your choice (1-3): ');
+    if (engineFlag === 'bing') {
+        await handleBingFlow(configStatus);
+        return;
+    } else if (engineFlag === 'google') {
+        await handleGoogleFlow(configStatus);
+        return;
+    }
+
+    printDetectionSummary(configStatus);
+
+    console.log(`${colors.bold}Let’s wire this up. Google or Bing?\nPick your weapon.${colors.reset}`);
+
+    console.log(`\n1. Google Search Console`);
+    console.log('2. Bing Webmaster Tools');
+    console.log('3. Exit');
+
+    const choice = await ask(`\n${colors.bold}${colors.cyan}Enter your choice (1-3): ${colors.reset}`);
 
     switch (choice) {
+        case '1':
+            await handleGoogleFlow(configStatus, true);
+            break;
+        case '2':
+            await handleBingFlow(configStatus);
+            break;
+        default:
+            console.log(`\n${colors.dim}See you on the flip side!${colors.reset}`);
+            rl.close();
+            break;
+    }
+}
+
+async function googleSubMenu(configStatus: any) {
+    console.log(`\n${colors.bold}Google Search Console Configuration${colors.reset}`);
+    console.log(`\n1. Login with Google (OAuth 2.0)`);
+    console.log('2. Setup Service Account (JSON Key)');
+    console.log('3. Back to main menu');
+
+    const choice = await ask(`\n${colors.bold}${colors.cyan}Enter your choice (1-3): ${colors.reset}`);
+
+    switch (choice) {
+        case '1':
+            await login();
+            break;
         case '2':
             await setupServiceAccount();
             break;
-        case '3':
-            await setupBing();
-            break;
         default:
-            await login();
+            await main();
             break;
     }
 }

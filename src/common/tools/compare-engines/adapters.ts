@@ -13,7 +13,17 @@ export async function fetchGoogleData(options: CompareEnginesOptions): Promise<s
     startRow: options.offset
   };
 
-  return await queryAnalytics(analyticsOptions);
+  try {
+    return await queryAnalytics(analyticsOptions);
+  } catch (error: any) {
+    // If site is not verified or other expected API error, return empty instead of crashing the whole comparison
+    const errMsg = error.message || '';
+    if (errMsg.includes('403') || errMsg.includes('forbidden') || errMsg.includes('permission')) {
+      console.warn(`CompareEngines: Google access denied for ${options.siteUrl}. Using empty data.`);
+      return [];
+    }
+    throw error;
+  }
 }
 
 export async function fetchBingData(options: CompareEnginesOptions): Promise<BingQueryStats[] | BingPageStats[]> {
@@ -21,14 +31,22 @@ export async function fetchBingData(options: CompareEnginesOptions): Promise<Bin
   let rawData: (BingQueryStats | BingPageStats)[] = [];
 
   // 1. Fetch Data
-  if (options.dimension === "query") {
-    rawData = await client.getQueryStats(options.siteUrl);
-  } else if (options.dimension === "page") {
-    rawData = await client.getPageStats(options.siteUrl);
-  } else {
-    // Country and Device are not directly supported by the current Bing Client for detailed breakdown
-    console.warn(`BingAdapter: Dimension '${options.dimension}' is not fully supported. Returning empty data.`);
-    return [];
+  try {
+    if (options.dimension === "query") {
+      rawData = await client.getQueryStats(options.siteUrl);
+    } else if (options.dimension === "page") {
+      rawData = await client.getPageStats(options.siteUrl);
+    } else {
+      console.warn(`BingAdapter: Dimension '${options.dimension}' is not fully supported.`);
+      return [];
+    }
+  } catch (error: any) {
+    const errMsg = error.message || '';
+    if (errMsg.includes('403') || errMsg.includes('forbidden') || errMsg.includes('Authentication') || errMsg.includes('404')) {
+      console.warn(`CompareEngines: Bing access denied/not found for ${options.siteUrl}. Using empty data.`);
+      return [];
+    }
+    throw error;
   }
 
   // 2. Filter by Date

@@ -80,42 +80,49 @@ This document outlines the planned features and improvements for this project.
 - `sites_health_check` - Check all sites for issues
 
 
-### v1.10.0 - OAuth2 Support
+### v1.11.0 - Bing & Multi-Engine Foundation
 
-- Browser-based OAuth2 flow for personal accounts
-- Token refresh handling
+- **Bing Webmaster Tools Support**: Comprehensive integration
+  - `bing_sites` - Manage Bing sites
+  - `bing_sitemaps` - List and submit Bing sitemaps
+  - `bing_inspection` - URL status and crawl details
+  - `bing_analytics` - Query and page performance (with client-side date filtering)
+  - `bing_url_submission` - Manual submission and IndexNow support
+- **Advanced Bing Tools**:
+  - `bing_keywords` - Keyword stats and related suggestions
+  - `bing_crawl` - Monitor crawl issues and statistics
+  - `bing_links` - Backlink monitoring
+  - `bing_sites_health` - Overall site health checks for Bing
 
-### v1.11.0 - Bing Webmaster Tools Support
+### v1.12.0 - Cross-Engine Analysis & Advanced SEO
 
-- `bing_sites` - List Bing sites
-- `bing_sitemaps` - List Bing sitemaps
-- `bing_inspection` - Inspect Bing URLs
-- `bing_analytics` - Get Bing analytics
+- **Cross-Engine Comparison Tool**: 
+  - `compare_engines` - Side-by-side Google vs Bing performance analysis
+  - **SEO Signals**: Engine-aware signals (`bing_opportunity`, `google_dependency_risk`, `ctr_mismatch`)
+- **Advanced Bing Analytics**:
+  - `bing_analytics_compare_periods` - Comparison between date ranges
+  - `bing_analytics_time_series` - Forecasting and rolling averages
+  - `bing_analytics_anomalies` - Detection of traffic spikes/drops
+- **Bing SEO Intelligence**:
+  - `bing_seo_recommendations` - Automated optimization suggestions
+  - `bing_low_hanging_fruit` - Rapid growth opportunities
+  - `bing_cannibalization` - Detect competing pages in Bing SERPs
+- **Prompt Enhancements**: All analytical prompts updated with engine selection and date range defaults.
 
 
 ---
 
 ## 🚧 In Progress
 
-_Nothing currently in progress_
+- `inspection_bulk` - Bulk URL inspection for GSC and Bing
 
 ---
 
-## 📋 Planned
+### v2.0.0 - Experience & Scalability
 
-### v1.11.0 - Bulk Operations
-
-| Feature           | Description                       |
-| ----------------- | --------------------------------- |
-| `inspection_bulk` | Inspect multiple URLs in one call |
-
-| Export to CSV/JSON | Export analytics data |
-| Batch URL status | Check indexing status for URL list |
-
-### v2.0.0 - Multi-account Support
-
-- Multi-account support
-- Account switcher
+- **Multi-account Support**: Manage multiple Google/Bing accounts seamlessly
+- **Export Capabilities**: Export to CSV/JSON for custom reporting
+- **Batch Processing**: Higher-order tools for automated bulk fixes
 
 ---
 
@@ -126,8 +133,8 @@ _Nothing currently in progress_
 | API                  | Use Case                               |
 | -------------------- | -------------------------------------- |
 | Google Analytics 4   | Session/user data, conversion tracking |
-| Bing Webmaster Tools | Microsoft search performance           |
 | Screaming Frog API   | Technical SEO audits                   |
+| Perplexity/OpenAI    | AI Search Visibility tracking           |
 
 ### Monitoring & Alerts
 

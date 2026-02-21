@@ -39,10 +39,27 @@ import { formatError } from "./common/errors.js";
 import { existsSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import { colors, printBoxHeader, printStatusLine } from './utils/ui.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load version from package.json
+let version = "1.0.0";
+try {
+  const pkgPath = join(__dirname, '../package.json');
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+  version = pkg.version;
+} catch (e) {
+  // Fallback for cases where package.json might not be accessible
+}
 
 const server = new McpServer({
   name: "search-console-mcp",
-  version: "1.0.0",
+  version: version,
 });
 
 // Sites Tools
@@ -1966,21 +1983,32 @@ async function main() {
   const hasOAuthTokens = existsSync(tokenPath);
 
   if (!hasServiceAccount && !hasOAuthTokens) {
-    console.error('\n╔══════════════════════════════════════════════════════════════╗');
-    console.error('║                🚀 Search Console MCP                         ║');
-    console.error('╚══════════════════════════════════════════════════════════════╝\n');
-    console.error('❌ No authentication found.\n');
-    console.error('💡 Please authorize with your Google Account:');
-    console.error('   npx -y search-console-mcp login\n');
-    console.error('Alternatively, run the setup wizard for other options:');
-    console.error('   npx -y search-console-mcp setup\n');
-    console.error('─'.repeat(64) + '\n');
-    // We don't exit here because the transport might still be needed or the user might be piping output
+    printBoxHeader('Authentication', colors.red);
+
+    console.error(`${colors.bold}${colors.dim}🔍 Connection Status:${colors.reset}`);
+    printStatusLine('Google', false);
+    const bingConnected = !!process.env.BING_API_KEY;
+    printStatusLine('Bing', bingConnected);
+    console.error('');
+
+    console.error(`${colors.red}✘${colors.reset} ${colors.bold}Google not configured.${colors.reset}`);
+    console.error(`${colors.blue}ℹ${colors.reset} ${colors.dim}Run:${colors.reset} ${colors.bold}${colors.cyan}search-console-mcp setup --engine=google${colors.reset}`);
+
+    if (!bingConnected) {
+      console.error(`\n${colors.red}✘${colors.reset} ${colors.bold}Bing not configured.${colors.reset}`);
+      console.error(`${colors.blue}ℹ${colors.reset} ${colors.dim}Run:${colors.reset} ${colors.bold}${colors.cyan}search-console-mcp setup --engine=bing${colors.reset}`);
+    }
+
+    console.error(`\n${colors.dim}${'─'.repeat(64)}${colors.reset}\n`);
   }
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Search Console MCP running on stdio");
+
+  const googleStatus = (hasServiceAccount || hasOAuthTokens) ? `${colors.green}✔ Google${colors.reset}` : `${colors.red}✘ Google${colors.reset}`;
+  const bingStatus = !!process.env.BING_API_KEY ? `${colors.green}✔ Bing${colors.reset}` : `${colors.red}✘ Bing${colors.reset}`;
+
+  console.error(`Search Console MCP running on stdio [ ${googleStatus} | ${bingStatus} ]`);
 }
 
 main().catch((error) => {
