@@ -163,7 +163,7 @@ export async function queryAnalytics(options: AnalyticsOptions): Promise<searchc
 
   const fetchPromise = (async () => {
     try {
-      const client = await getSearchConsoleClient();
+      const client = await getSearchConsoleClient(options.siteUrl);
       const requestBody: searchconsole_v1.Schema$SearchAnalyticsQueryRequest = {
         startDate: options.startDate,
         endDate: options.endDate,

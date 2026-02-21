@@ -1,3 +1,6 @@
+import { resolveAccount } from '../common/auth/resolver.js';
+import { loadConfig } from '../common/auth/config.js';
+
 export interface BingSite {
     Url: string;
     State: string;
@@ -204,16 +207,44 @@ export class BingClient {
     }
 }
 
-let cachedBingClient: BingClient | null = null;
+let cachedBingClients: Record<string, BingClient> = {};
 
-export async function getBingClient(): Promise<BingClient> {
-    if (cachedBingClient) return cachedBingClient;
+export async function getBingClient(siteUrl?: string, accountId?: string): Promise<BingClient> {
+    // 1. Resolve Account
+    let apiKey: string | undefined;
+    let cacheKey: string;
 
-    const apiKey = process.env.BING_API_KEY;
-    if (!apiKey) {
-        throw new Error('Bing API Key not found. Please set BING_API_KEY environment variable or run setup.');
+    if (accountId) {
+        const config = await loadConfig();
+        const account = config.accounts[accountId];
+        if (!account || account.engine !== 'bing') {
+            throw new Error(`Bing account ${accountId} not found.`);
+        }
+        apiKey = account.apiKey;
+        cacheKey = account.id;
+    } else {
+        try {
+            const account = await resolveAccount(siteUrl || '', 'bing');
+            apiKey = account.apiKey;
+            cacheKey = account.id;
+        } catch (error) {
+            // Fallback to environment variable for legacy support if resolution fails or no site specified
+            apiKey = process.env.BING_API_KEY;
+            cacheKey = 'env_fallback';
+
+            if (!apiKey) {
+                throw error; // Re-throw the resolution error if no ENV fallback either
+            }
+        }
     }
 
-    cachedBingClient = new BingClient(apiKey);
-    return cachedBingClient;
+    if (cachedBingClients[cacheKey]) return cachedBingClients[cacheKey];
+
+    if (!apiKey) {
+        throw new Error('Bing API Key not found. Please run setup to add an account.');
+    }
+
+    const client = new BingClient(apiKey);
+    cachedBingClients[cacheKey] = client;
+    return client;
 }

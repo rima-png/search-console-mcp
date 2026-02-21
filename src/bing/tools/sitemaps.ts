@@ -7,7 +7,7 @@ import { getBingClient } from '../client.js';
  * @returns A list of sitemaps.
  */
 export async function listSitemaps(siteUrl: string): Promise<any[]> {
-    const client = await getBingClient();
+    const client = await getBingClient(siteUrl);
     return client.getFeeds(siteUrl);
 }
 
@@ -18,7 +18,7 @@ export async function listSitemaps(siteUrl: string): Promise<any[]> {
  * @param sitemapUrl - The URL of the sitemap file.
  */
 export async function submitSitemap(siteUrl: string, sitemapUrl: string): Promise<string> {
-    const client = await getBingClient();
+    const client = await getBingClient(siteUrl);
     await client.submitSitemap(siteUrl, sitemapUrl);
     return `Successfully submitted sitemap: ${sitemapUrl} for site ${siteUrl}`;
 }
@@ -30,7 +30,7 @@ export async function submitSitemap(siteUrl: string, sitemapUrl: string): Promis
  * @param sitemapUrl - The URL of the sitemap to remove.
  */
 export async function deleteSitemap(siteUrl: string, sitemapUrl: string): Promise<string> {
-    const client = await getBingClient();
+    const client = await getBingClient(siteUrl);
     await client.deleteSitemap(siteUrl, sitemapUrl);
     return `Successfully removed sitemap: ${sitemapUrl} for site ${siteUrl}`;
 }

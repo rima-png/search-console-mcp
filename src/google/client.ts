@@ -1,16 +1,13 @@
 import { google, searchconsole_v1 } from 'googleapis';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { join } from 'path';
-import { homedir } from 'os';
-import { createCipheriv, createDecipheriv, scryptSync, randomBytes } from 'crypto';
 import nodeMachineId from 'node-machine-id';
+import { AccountConfig, loadConfig, saveConfig, updateAccount, removeAccount } from '../common/auth/config.js';
+import { resolveAccount } from '../common/auth/resolver.js';
 const { machineIdSync } = nodeMachineId;
 
 const SCOPES = [
   'https://www.googleapis.com/auth/webmasters.readonly',
   'https://www.googleapis.com/auth/userinfo.email'
 ];
-const TOKEN_PATH = join(homedir(), '.search-console-mcp-tokens.enc');
 const SERVICE_NAME = 'io.github.saurabhsharma2u.search-console-mcp';
 const DEFAULT_ACCOUNT = 'default';
 
@@ -18,45 +15,31 @@ const DEFAULT_ACCOUNT = 'default';
 export const DEFAULT_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '347626597503-dr6t24m0i3g1nl1suam86rs650t3fhau.apps.googleusercontent.com';
 export const DEFAULT_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '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';
 
-const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
+// Encryption logic moved to src/common/auth/config.ts
 
-function getEncryptionKey() {
-  const mId = machineIdSync();
-  const salt = process.env.USER || 'sc-mcp-salt';
-  return scryptSync(mId, salt, 32);
-}
+let cachedClientMap: Record<string, searchconsole_v1.Searchconsole> = {};
 
-function encrypt(text: string): string {
-  const iv = randomBytes(12);
-  const key = getEncryptionKey();
-  const cipher = createCipheriv(ENCRYPTION_ALGORITHM, key, iv);
-  let encrypted = cipher.update(text, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  const authTag = cipher.getAuthTag().toString('hex');
-  return `${iv.toString('hex')}:${authTag}:${encrypted}`;
-}
-
-function decrypt(data: string): string {
-  const [ivHex, authTagHex, encryptedHex] = data.split(':');
-  const iv = Buffer.from(ivHex, 'hex');
-  const authTag = Buffer.from(authTagHex, 'hex');
-  const key = getEncryptionKey();
-  const decipher = createDecipheriv(ENCRYPTION_ALGORITHM, key, iv);
-  decipher.setAuthTag(authTag);
-  let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
-}
-
-let cachedClient: searchconsole_v1.Searchconsole | null = null;
-
-export async function getSearchConsoleClient(targetEmail?: string): Promise<searchconsole_v1.Searchconsole> {
-  if (cachedClient && !targetEmail) {
-    return cachedClient;
+export async function getSearchConsoleClient(siteUrl?: string, accountId?: string): Promise<searchconsole_v1.Searchconsole> {
+  // 1. Resolve Account
+  let account: AccountConfig;
+  if (accountId) {
+    const config = await loadConfig();
+    account = config.accounts[accountId];
+    if (!account) throw new Error(`Account ${accountId} not found.`);
+  } else if (siteUrl) {
+    account = await resolveAccount(siteUrl, 'google');
+  } else {
+    // Try to find any Google account if no specific site requested
+    account = await resolveAccount('', 'google');
   }
 
-  // 1. Load Tokens (Keychain first, then File)
-  const tokens = await loadTokens(targetEmail);
+  const cacheKey = account.id;
+  if (cachedClientMap[cacheKey]) {
+    return cachedClientMap[cacheKey];
+  }
+
+  // 2. Load Tokens
+  const tokens = await loadTokensForAccount(account);
 
   if (tokens) {
     try {
@@ -69,45 +52,31 @@ export async function getSearchConsoleClient(targetEmail?: string): Promise<sear
       // Check for expiry (refresh if needed)
       if (tokens.expiry_date && tokens.expiry_date <= Date.now()) {
         const { credentials } = await oauth2Client.refreshAccessToken();
-        // Since we refresh, we need the email to save back. 
-        // If we don't have targetEmail, we try to fetch it from the new credentials or previous data
-        const email = targetEmail || await getUserEmail(credentials);
-        await saveTokens(credentials, email);
+        await saveTokensForAccount(account, credentials);
         oauth2Client.setCredentials(credentials);
       }
 
       const client = google.searchconsole({ version: 'v1', auth: oauth2Client });
-      if (!targetEmail) cachedClient = client;
+      cachedClientMap[cacheKey] = client;
       return client;
     } catch (error) {
-      console.error('Failed to use stored OAuth2 tokens:', (error as Error).message);
+      console.error(`Failed to use tokens for account ${account.alias}:`, (error as Error).message);
     }
   }
 
-  // 2. Fallback to Service Account (Environment Variables)
-  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
+  // 3. Fallback to Service Account (Environment Variables) - Only if no specific account was resolved or it was a legacy fallback
+  if (!accountId && !process.env.GOOGLE_APPLICATION_CREDENTIALS && process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
     const jwtClient = new google.auth.JWT({
       email: process.env.GOOGLE_CLIENT_EMAIL,
       key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       scopes: SCOPES
     });
     await jwtClient.authorize();
-    cachedClient = google.searchconsole({ version: 'v1', auth: jwtClient as any });
-    return cachedClient;
+    const client = google.searchconsole({ version: 'v1', auth: jwtClient as any });
+    return client;
   }
 
-  // 3. Fallback to File-based credentials
-  const auth = new google.auth.GoogleAuth({
-    scopes: SCOPES,
-  });
-
-  try {
-    const client = await auth.getClient();
-    cachedClient = google.searchconsole({ version: 'v1', auth: client as any });
-    return cachedClient;
-  } catch (error) {
-    throw new Error('No valid authentication found. Please run "search-console-mcp login" to authorize.');
-  }
+  throw new Error(`Authentication required for ${siteUrl || 'Google Search Console'}. Run setup to add an account.`);
 }
 
 export async function getUserEmail(tokens: any): Promise<string> {
@@ -121,38 +90,9 @@ export async function getUserEmail(tokens: any): Promise<string> {
   return userInfo.data.email || DEFAULT_ACCOUNT;
 }
 
-export async function logout(email?: string) {
-  const target = email || DEFAULT_ACCOUNT;
-
-  // 1. Try Keychain
-  try {
-    const { Entry } = await import('@napi-rs/keyring');
-    const entry = new Entry(SERVICE_NAME, target);
-    await entry.deletePassword();
-  } catch (e) { }
-
-  // 2. Clear from file
-  if (existsSync(TOKEN_PATH)) {
-    try {
-      const encryptedData = readFileSync(TOKEN_PATH, 'utf-8');
-      const decrypted = decrypt(encryptedData);
-      const allTokens = JSON.parse(decrypted);
-      delete allTokens[target];
-      if (Object.keys(allTokens).length === 0) {
-        // Just delete the file if no accounts left
-        import('fs').then(fs => fs.unlinkSync(TOKEN_PATH)).catch(() => { });
-      } else {
-        const updatedEncrypted = encrypt(JSON.stringify(allTokens));
-        writeFileSync(TOKEN_PATH, updatedEncrypted, { mode: 0o600 });
-      }
-    } catch (e) { }
-  }
-}
-
-export async function loadTokens(email?: string): Promise<any> {
-  const target = email || DEFAULT_ACCOUNT;
-
-  // 1. Try Keychain
+export async function loadTokensForAccount(account: AccountConfig): Promise<any> {
+  // 1. Try Keychain (using alias/email as key for backward compatibility if it's an email)
+  const target = account.alias;
   try {
     const { Entry } = await import('@napi-rs/keyring');
     const entry = new Entry(SERVICE_NAME, target);
@@ -162,56 +102,44 @@ export async function loadTokens(email?: string): Promise<any> {
     }
   } catch (e) { }
 
-  // 2. Try Encrypted File
-  if (existsSync(TOKEN_PATH)) {
-    try {
-      const encryptedData = readFileSync(TOKEN_PATH, 'utf-8');
-      const decrypted = decrypt(encryptedData);
-      const allTokens = JSON.parse(decrypted);
-      return allTokens[target] || (email ? null : Object.values(allTokens)[0]);
-    } catch (e) { }
-  }
-
-  return null;
+  // 2. Fallback to tokens stored in account config
+  return account.tokens || null;
 }
 
-export async function saveTokens(tokens: any, email?: string) {
-  const target = email || DEFAULT_ACCOUNT;
-
-  // Only store what we need
+export async function saveTokensForAccount(account: AccountConfig, tokens: any) {
   const minimalTokens = {
-    refresh_token: tokens.refresh_token,
+    refresh_token: tokens.refresh_token || account.tokens?.refresh_token,
     expiry_date: tokens.expiry_date,
-    access_token: tokens.access_token // Needed for immediate use, but refresh_token is the key
+    access_token: tokens.access_token
   };
 
-  const tokenStr = JSON.stringify(minimalTokens);
+  // Update account in config
+  account.tokens = minimalTokens;
+  await updateAccount(account);
 
-  // 1. Try Keychain
-  let keychainSuccess = false;
+  // Sync to keychain
+  const target = account.alias;
   try {
     const { Entry } = await import('@napi-rs/keyring');
     const entry = new Entry(SERVICE_NAME, target);
-    await entry.setPassword(tokenStr);
-    keychainSuccess = true;
+    await entry.setPassword(JSON.stringify(minimalTokens));
+  } catch (e) { }
+}
+
+export async function logout(accountId: string) {
+  const config = await loadConfig();
+  const account = config.accounts[accountId];
+  if (!account) return;
+
+  // 1. Try Keychain
+  try {
+    const { Entry } = await import('@napi-rs/keyring');
+    const entry = new Entry(SERVICE_NAME, account.alias);
+    await entry.deletePassword();
   } catch (e) { }
 
-  // 2. Always write to encrypted file as a fallback
-  try {
-    let allTokens: any = {};
-    if (existsSync(TOKEN_PATH)) {
-      try {
-        const encryptedData = readFileSync(TOKEN_PATH, 'utf-8');
-        const decrypted = decrypt(encryptedData);
-        allTokens = JSON.parse(decrypted);
-      } catch (e) { }
-    }
-    allTokens[target] = minimalTokens;
-    const encrypted = encrypt(JSON.stringify(allTokens));
-    writeFileSync(TOKEN_PATH, encrypted, { mode: 0o600 });
-  } catch (e) {
-    if (!keychainSuccess) throw e;
-  }
+  // 2. Remove from config
+  await removeAccount(accountId);
 }
 
 export interface DeviceCodeResponse {

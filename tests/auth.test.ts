@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { loadTokens, saveTokens, logout, getUserEmail } from '../src/google/client.js';
-import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
-import nodeMachineId from 'node-machine-id';
+import { loadTokensForAccount, saveTokensForAccount, logout, getUserEmail } from '../src/google/client.js';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { AccountConfig } from '../src/common/auth/config.js';
 
 // Mock fs
 vi.mock('fs', () => ({
@@ -17,6 +17,17 @@ vi.mock('node-machine-id', () => ({
         machineIdSync: vi.fn(() => 'test-machine-id'),
     }
 }));
+
+// Mock common/auth/config.js to avoid encryption issues in these tests
+vi.mock('../src/common/auth/config.js', async () => {
+    const actual = await vi.importActual('../src/common/auth/config.js');
+    return {
+        ...actual as any,
+        loadConfig: vi.fn().mockResolvedValue({ accounts: {} }),
+        updateAccount: vi.fn().mockResolvedValue(undefined),
+        removeAccount: vi.fn().mockResolvedValue(undefined),
+    };
+});
 
 // Mock @napi-rs/keyring
 const mockDeletePassword = vi.fn();
@@ -57,66 +68,69 @@ vi.mock('googleapis', () => {
     };
 });
 
-describe('Authentication & Security', () => {
+describe('Authentication & Security (Multi-Account)', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-    it('should save tokens to keychain and encrypted file', async () => {
-        const tokens = { refresh_token: 'test-refresh', expiry_date: 12345 };
-        const email = 'test@example.com';
+    const mockAccount: AccountConfig = {
+        id: 'google_test',
+        engine: 'google',
+        alias: 'test@example.com'
+    };
 
-        await saveTokens(tokens, email);
+    it('should save tokens to keychain and update config', async () => {
+        const tokens = { refresh_token: 'test-refresh', expiry_date: 12345 };
+
+        await saveTokensForAccount(mockAccount, tokens);
 
         // Check Keychain
         expect(mockSetPassword).toHaveBeenCalled();
         const callValue = mockSetPassword.mock.calls[0][0];
         expect(JSON.parse(callValue)).toMatchObject({ refresh_token: 'test-refresh' });
 
-        // Check Encrypted File
-        expect(writeFileSync).toHaveBeenCalled();
-        const encryptedData = vi.mocked(writeFileSync).mock.calls[0][1] as string;
-        expect(encryptedData).toContain(':'); // IV:AuthTag:Ciphertext format
+        // Check that config update was called
+        const { updateAccount } = await import('../src/common/auth/config.js');
+        expect(updateAccount).toHaveBeenCalledWith(expect.objectContaining({
+            id: 'google_test',
+            tokens: expect.objectContaining({ refresh_token: 'test-refresh' })
+        }));
     });
 
     it('should load tokens from keychain if available', async () => {
         const tokens = { refresh_token: 'keychain-refresh' };
         mockGetPassword.mockResolvedValue(JSON.stringify(tokens));
 
-        const result = await loadTokens('test@example.com');
+        const result = await loadTokensForAccount(mockAccount);
 
         expect(result).toMatchObject(tokens);
         expect(mockGetPassword).toHaveBeenCalled();
     });
 
-    it('should fallback to encrypted file if keychain fails', async () => {
+    it('should fallback to tokens in account config if keychain fails', async () => {
         mockGetPassword.mockRejectedValue(new Error('Keychain error'));
-        vi.mocked(existsSync).mockReturnValue(true);
 
-        // Create a real encrypted string for the mock to decrypt
-        // Actually, since we mocked scryptSync/createCipheriv via crypto (maybe we should mock crypto too? No, let's just mock the internal decrypt/encrypt if needed, or just ensure it's called)
-        // For simplicity in this test, let's just verify loadTokens tries to read the file
-        vi.mocked(readFileSync).mockReturnValue('mock-iv:mock-tag:mock-data');
+        const accountWithTokens: AccountConfig = {
+            ...mockAccount,
+            tokens: { refresh_token: 'config-refresh' }
+        };
 
-        // This will likely fail decryption because the mock-data is garbage, 
-        // but it proves the fallback logic. 
-        // Let's refine the mock to return a valid-ish encrypted string or bypass decryption logic.
-        // Actually, it's better to test that it calls readFileSync.
-
-        await loadTokens('test@example.com');
-        expect(readFileSync).toHaveBeenCalled();
+        const result = await loadTokensForAccount(accountWithTokens);
+        expect(result).toMatchObject({ refresh_token: 'config-refresh' });
     });
 
     it('should delete tokens on logout', async () => {
-        vi.mocked(existsSync).mockReturnValue(true);
-        vi.mocked(readFileSync).mockReturnValue('mock-iv:mock-tag:mock-data');
+        const { loadConfig, removeAccount } = await import('../src/common/auth/config.js');
+        vi.mocked(loadConfig).mockResolvedValue({
+            accounts: {
+                'google_test': mockAccount
+            }
+        });
 
-        await logout('test@example.com');
+        await logout('google_test');
 
         expect(mockDeletePassword).toHaveBeenCalled();
-        // Since the file decryption will fail with garbage data in the mock, 
-        // we just verify it attempted to handle the file.
-        expect(readFileSync).toHaveBeenCalled();
+        expect(removeAccount).toHaveBeenCalledWith('google_test');
     });
 
     it('should fetch user email', async () => {

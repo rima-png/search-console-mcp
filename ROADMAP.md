@@ -136,21 +136,8 @@ This document outlines the planned features and improvements for this project.
 | Screaming Frog API   | Technical SEO audits                   |
 | Perplexity/OpenAI    | AI Search Visibility tracking           |
 
-### Monitoring & Alerts
 
-- Performance threshold alerts
-- Indexing issue notifications
-- Manual actions monitoring
-- Security issues dashboard
-- Sitemap error tracking
 
-### Reporting
-
-- Scheduled reports (daily/weekly/monthly)
-- Custom report templates
-- PDF/HTML report generation
-- Slack/Discord webhook integration
-- Email digest summaries
 
 ### Developer Experience
 
@@ -158,14 +145,6 @@ This document outlines the planned features and improvements for this project.
 - Request/response caching (Redis support)
 - Rate limit handling with exponential backoff
 - Webhook support for real-time updates
-- GraphQL-style query builder
-
-### Multi-Site Management
-
-- Site groups/tags
-- Cross-site comparison
-- Portfolio dashboards
-- Aggregate analytics
 
 ---
 

@@ -12,6 +12,6 @@ export async function getCrawlIssues(siteUrl: string): Promise<BingCrawlIssue[]>
  * Get crawl statistics for a site.
  */
 export async function getCrawlStats(siteUrl: string): Promise<BingCrawlStats[]> {
-    const client = await getBingClient();
+    const client = await getBingClient(siteUrl);
     return client.getCrawlStats(siteUrl);
 }

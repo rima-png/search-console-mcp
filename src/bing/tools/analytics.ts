@@ -8,7 +8,7 @@ export async function getQueryStats(
     startDate?: string,
     endDate?: string
 ): Promise<BingQueryStats[]> {
-    const client = await getBingClient();
+    const client = await getBingClient(siteUrl);
     const stats = await client.getQueryStats(siteUrl);
 
     if (!startDate && !endDate) return stats;
@@ -30,7 +30,7 @@ export async function getPageStats(
     startDate?: string,
     endDate?: string
 ): Promise<BingPageStats[]> {
-    const client = await getBingClient();
+    const client = await getBingClient(siteUrl);
     const stats = await client.getPageStats(siteUrl);
 
     if (!startDate && !endDate) return stats;
@@ -53,7 +53,7 @@ export async function getPageQueryStats(
     startDate?: string,
     endDate?: string
 ): Promise<BingQueryStats[]> {
-    const client = await getBingClient();
+    const client = await getBingClient(siteUrl);
     const stats = await client.getPageQueryStats(siteUrl, pageUrl);
 
     if (!startDate && !endDate) return stats;
@@ -75,7 +75,7 @@ export async function getQueryPageStats(
     startDate?: string,
     endDate?: string
 ): Promise<BingQueryPageStats[]> {
-    const client = await getBingClient();
+    const client = await getBingClient(siteUrl);
     const stats = await client.getQueryPageStats(siteUrl);
 
     if (!startDate && !endDate) return stats;
@@ -93,7 +93,7 @@ export async function getQueryPageStats(
  * Get historical rank and traffic statistics for a site.
  */
 export async function getRankAndTrafficStats(siteUrl: string): Promise<BingRankAndTrafficStats[]> {
-    const client = await getBingClient();
+    const client = await getBingClient(siteUrl);
     return client.getRankAndTrafficStats(siteUrl);
 }
 

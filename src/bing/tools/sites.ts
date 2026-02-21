@@ -1,12 +1,13 @@
 import { getBingClient, BingSite } from '../client.js';
 
 /**
- * List all sites verified in the user's Bing Webmaster Tools.
+ * List all sites verified in the specified Bing account.
  *
+ * @param accountId - Optional. The account to list sites for.
  * @returns A list of verified site properties.
  */
-export async function listSites(): Promise<BingSite[]> {
-    const client = await getBingClient();
+export async function listSites(accountId?: string): Promise<BingSite[]> {
+    const client = await getBingClient(undefined, accountId);
     return client.getSiteList();
 }
 
@@ -17,7 +18,7 @@ export async function listSites(): Promise<BingSite[]> {
  * @returns A success message.
  */
 export async function addSite(siteUrl: string): Promise<string> {
-    const client = await getBingClient();
+    const client = await getBingClient(siteUrl);
     await client.addSite(siteUrl);
     return `Successfully added site: ${siteUrl}`;
 }
@@ -29,7 +30,7 @@ export async function addSite(siteUrl: string): Promise<string> {
  * @returns A success message.
  */
 export async function removeSite(siteUrl: string): Promise<string> {
-    const client = await getBingClient();
+    const client = await getBingClient(siteUrl);
     await client.removeSite(siteUrl);
     return `Successfully removed site: ${siteUrl}`;
 }
