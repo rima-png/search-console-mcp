@@ -144,8 +144,9 @@ export async function testConnection(keyPath: string): Promise<boolean> {
     }
 }
 
-export function showMcpConfigSnippet() {
-    console.log('\nAdd this to your MCP client configuration:\n');
+export function showMcpConfigSnippet(legacyEnv?: Record<string, string>) {
+    console.log(`\n${colors.bold}Recommended: Multi-Account Configuration${colors.reset}`);
+    console.log('Add this generic block to your MCP client to support all your configured accounts:\n');
     console.log(JSON.stringify({
         mcpServers: {
             "search-console": {
@@ -154,6 +155,21 @@ export function showMcpConfigSnippet() {
             }
         }
     }, null, 2));
+
+    if (legacyEnv) {
+        console.log(`\n${colors.dim}--- OR ---${colors.reset}\n`);
+        console.log(`${colors.bold}Legacy: Single-Account Configuration${colors.reset}`);
+        console.log('If you prefer passing credentials via environment variables:\n');
+        console.log(JSON.stringify({
+            mcpServers: {
+                "search-console": {
+                    command: "npx",
+                    args: ["-y", "search-console-mcp"],
+                    env: legacyEnv
+                }
+            }
+        }, null, 2));
+    }
 }
 
 export function resolveRepo(dirname: string): string {
@@ -241,8 +257,10 @@ export async function login() {
         printInfo('Tokens are stored securely in your system keychain.');
 
         printStep(2, 'Configure your MCP client');
-
-        showMcpConfigSnippet();
+        showMcpConfigSnippet({
+            GOOGLE_CLIENT_ID: clientId,
+            GOOGLE_CLIENT_SECRET: clientSecret
+        });
 
         await supportProject();
         rl.close();
@@ -366,7 +384,9 @@ async function setupServiceAccount() {
     printSuccess(`Successfully added account ${alias}!`);
 
     printStep(4, 'Configure your MCP client');
-    showMcpConfigSnippet();
+    showMcpConfigSnippet({
+        GOOGLE_APPLICATION_CREDENTIALS: credentialsPath
+    });
     console.log('\n🎉 Setup complete! You can now use Search Console MCP.\n');
 
     await supportProject();
@@ -444,7 +464,9 @@ async function setupBing() {
     printSuccess(`Successfully added Bing account ${alias}!`);
 
     printStep(2, 'Configure your MCP client');
-    showMcpConfigSnippet();
+    showMcpConfigSnippet({
+        BING_API_KEY: apiKey
+    });
 
     console.log('\n🎉 Setup complete! You can now use Search Console MCP.\n');
 
