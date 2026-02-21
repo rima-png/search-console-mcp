@@ -64,16 +64,35 @@ export async function getSearchConsoleClient(siteUrl?: string, accountId?: strin
     }
   }
 
-  // 3. Fallback to Service Account (Environment Variables) - Only if no specific account was resolved or it was a legacy fallback
-  if (!accountId && !process.env.GOOGLE_APPLICATION_CREDENTIALS && process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
-    const jwtClient = new google.auth.JWT({
-      email: process.env.GOOGLE_CLIENT_EMAIL,
-      key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  // 3. Support Service Account Path (Multi-Account)
+  if (account.serviceAccountPath) {
+    const auth = new google.auth.GoogleAuth({
+      keyFilename: account.serviceAccountPath,
       scopes: SCOPES
     });
-    await jwtClient.authorize();
-    const client = google.searchconsole({ version: 'v1', auth: jwtClient as any });
+    const client = google.searchconsole({ version: 'v1', auth });
+    cachedClientMap[cacheKey] = client;
     return client;
+  }
+
+  // 4. Fallback to Service Account (Environment Variables) - Only if no specific account was resolved or it was a legacy fallback
+  if (!accountId) {
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      const auth = new google.auth.GoogleAuth({
+        scopes: SCOPES
+      });
+      return google.searchconsole({ version: 'v1', auth });
+    }
+
+    if (process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
+      const jwtClient = new google.auth.JWT({
+        email: process.env.GOOGLE_CLIENT_EMAIL,
+        key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        scopes: SCOPES
+      });
+      await jwtClient.authorize();
+      return google.searchconsole({ version: 'v1', auth: jwtClient as any });
+    }
   }
 
   throw new Error(`Authentication required for ${siteUrl || 'Google Search Console'}. Run setup to add an account.`);

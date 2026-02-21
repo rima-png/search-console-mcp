@@ -23,6 +23,7 @@ export interface AccountConfig {
         expiry_date?: number | null;
         access_token?: string | null;
     };
+    serviceAccountPath?: string;
     // Bing specific
     apiKey?: string;
     // Metadata for migration

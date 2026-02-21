@@ -144,16 +144,13 @@ export async function testConnection(keyPath: string): Promise<boolean> {
     }
 }
 
-export function showConfigSnippets(credentialsPath: string) {
+export function showMcpConfigSnippet() {
     console.log('\nAdd this to your MCP client configuration:\n');
     console.log(JSON.stringify({
         mcpServers: {
             "search-console": {
                 command: "npx",
-                args: ["-y", "search-console-mcp"],
-                env: {
-                    GOOGLE_APPLICATION_CREDENTIALS: credentialsPath
-                }
+                args: ["-y", "search-console-mcp"]
             }
         }
     }, null, 2));
@@ -245,7 +242,7 @@ export async function login() {
 
         printStep(2, 'Configure your MCP client');
 
-        showOAuth2ConfigSnippets(clientId, clientSecret);
+        showMcpConfigSnippet();
 
         await supportProject();
         rl.close();
@@ -274,22 +271,6 @@ export async function runLogout() {
         printError(`Logout failed: ${(error as Error).message}`);
     }
     rl.close();
-}
-
-function showOAuth2ConfigSnippets(clientId: string, clientSecret: string) {
-    console.log('\nAdd this to your MCP client configuration:\n');
-    console.log(JSON.stringify({
-        mcpServers: {
-            "search-console": {
-                command: "npx",
-                args: ["-y", "search-console-mcp"],
-                env: {
-                    GOOGLE_CLIENT_ID: clientId,
-                    GOOGLE_CLIENT_SECRET: clientSecret
-                }
-            }
-        }
-    }, null, 2));
 }
 
 async function setupServiceAccount() {
@@ -339,8 +320,53 @@ async function setupServiceAccount() {
         process.exit(1);
     }
 
+    let selectedWebsites: string[] | undefined;
+    try {
+        const { google } = await import('googleapis');
+        const auth = new google.auth.GoogleAuth({
+            keyFilename: credentialsPath,
+            scopes: ['https://www.googleapis.com/auth/webmasters.readonly']
+        });
+        const gClient = google.searchconsole({ version: 'v1', auth });
+        const siteResponse = await gClient.sites.list();
+        const allSites = siteResponse.data?.siteEntry || [];
+
+        if (allSites.length > 0) {
+            console.log(`\n${colors.bold}Available websites:${colors.reset}`);
+            console.log(`  0. [All Sites] (Default)`);
+            allSites.forEach((s: any, i: number) => {
+                let displayUrl = (s.siteUrl || '').trim();
+                if (displayUrl.startsWith('sc-domain:')) displayUrl = displayUrl.substring(10);
+                else if (displayUrl.startsWith('sc-ptr:')) displayUrl = displayUrl.substring(7);
+                console.log(`  ${i + 1}. ${displayUrl}`);
+            });
+
+            const selection = await ask(`\nSelect websites to authorize (comma-separated numbers, e.g. 1,2 or leave empty for all): `);
+            if (selection && selection.trim() !== '0') {
+                const indices = selection.split(',').map(s => parseInt(s.trim()) - 1).filter(idx => idx >= 0 && idx < allSites.length);
+                if (indices.length > 0) {
+                    selectedWebsites = indices.map(idx => allSites[idx].siteUrl!);
+                }
+            }
+        }
+    } catch (e) {
+        // Silently skip if fails to fetch
+    }
+
+    const alias = await ask(`Enter an alias for this account (optional, default: ${serviceAccountEmail}): `) || serviceAccountEmail;
+
+    const account: AccountConfig = {
+        id: `google_${Date.now()}`,
+        engine: 'google',
+        alias,
+        websites: selectedWebsites,
+        serviceAccountPath: credentialsPath
+    };
+    await updateAccount(account);
+    printSuccess(`Successfully added account ${alias}!`);
+
     printStep(4, 'Configure your MCP client');
-    showConfigSnippets(credentialsPath);
+    showMcpConfigSnippet();
     console.log('\n🎉 Setup complete! You can now use Search Console MCP.\n');
 
     await supportProject();
@@ -416,6 +442,12 @@ async function setupBing() {
 
     await updateAccount(account);
     printSuccess(`Successfully added Bing account ${alias}!`);
+
+    printStep(2, 'Configure your MCP client');
+    showMcpConfigSnippet();
+
+    console.log('\n🎉 Setup complete! You can now use Search Console MCP.\n');
+
     await supportProject();
     rl.close();
 }
