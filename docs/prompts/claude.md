@@ -38,6 +38,17 @@ Run a health check across all my verified sites.
 4. Provide a prioritized action plan for the most affected sites.
 ```
 
+## The "Google vs. Bing" Prompt
+Use this to find cross-engine opportunities.
+
+```markdown
+Compare my performance on Google and Bing for https://example.com over the last 30 days.
+1. Use the compare_engines tool to see which keywords rank well on Google but poorly on Bing.
+2. Flag any keywords where I'm overly dependent on Google (85%+ click share).
+3. Identify Bing opportunities where I rank in the top 5 on Google but 10+ on Bing.
+4. Give me a prioritized list of 3 quick wins to grow my Bing traffic.
+```
+
 ## Why these work well
 *   **Chained Tool Use:** These prompts encourage Claude to use multiple tools in sequence before answering.
 *   **Role Prompting:** By asking Claude to "Act as a senior SEO consultant," you improve the quality of the qualitative reasoning it adds to the quantitative data.

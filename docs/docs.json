@@ -22,6 +22,8 @@
           "getting-started/overview",
           "getting-started/installation",
           "getting-started/authentication",
+          "getting-started/accounts",
+          "getting-started/multi-account",
           "getting-started/first-queries"
         ]
       },
@@ -39,6 +41,8 @@
         "pages": [
           "tools/analytics",
           "tools/seo-intelligence",
+          "tools/bing",
+          "tools/compare-engines",
           "tools/inspection",
           "tools/sites-and-sitemaps",
           "tools/site-health"

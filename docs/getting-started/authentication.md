@@ -108,3 +108,11 @@ You can configure the Bing API Key in your MCP client configuration using the `B
 ### Setup Wizard support
 Alternatively, run `npx search-console-mcp setup` and choose Option 3 to configure your Bing API Key interactively.
 
+---
+
+## What's Next?
+
+Once you're authenticated, you can manage your accounts and connect additional ones:
+
+- [Managing Accounts](/getting-started/accounts) — List, remove, and restrict accounts from the CLI.
+- [Multi-Account Support](/getting-started/multi-account) — Connect multiple Google and Bing accounts and let the server pick the right one automatically.

@@ -64,6 +64,8 @@ function printDetectionSummary(results: any) {
     const gCount = results.googleAccounts ? results.googleAccounts.length : 0;
     const bCount = (results.bingAccounts ? results.bingAccounts.length : 0) + (results.legacyBing ? 1 : 0);
 
+    if (gCount === 0 && bCount === 0) return;
+
     console.log(`${colors.bold}${colors.dim}🔍 Connection Status${colors.reset}\n`);
 
     printStatusLine('Google Search Console', gCount > 0);
@@ -227,12 +229,18 @@ export async function login() {
 
         const alias = await ask(`Enter an alias for this account (optional, default: ${email}): `) || email;
 
+        const config = await loadConfig();
+        const existingAccount = Object.values(config.accounts).find(a => a.engine === 'google' && a.alias === alias);
+        const accountId = existingAccount ? existingAccount.id : `google_${Date.now()}`;
+
         const account: AccountConfig = {
-            id: `google_${Date.now()}`,
+            ...(existingAccount || {}),
+            id: accountId,
             engine: 'google',
             alias,
             websites: selectedWebsites
         };
+        delete account.serviceAccountPath;
 
         await updateAccount(account);
         await saveTokensForAccount(account, tokens);
@@ -354,8 +362,13 @@ async function setupServiceAccount() {
 
     const alias = await ask(`Enter an alias for this account (optional, default: ${serviceAccountEmail}): `) || serviceAccountEmail;
 
+    const config = await loadConfig();
+    const existingAccount = Object.values(config.accounts).find(a => a.engine === 'google' && a.alias === alias);
+    const accountId = existingAccount ? existingAccount.id : `google_${Date.now()}`;
+
     const account: AccountConfig = {
-        id: `google_${Date.now()}`,
+        ...(existingAccount || {}),
+        id: accountId,
         engine: 'google',
         alias,
         websites: selectedWebsites,
@@ -513,9 +526,18 @@ async function handleBingFlow(configStatus: any) {
 }
 
 export async function main() {
+    const args = process.argv.slice(2);
+
+    // Support running `--accounts` directly from the setup file for better developer experience
+    if (args.includes('--accounts') || args.includes('accounts')) {
+        const { main: accountsMain } = await import('./accounts.js');
+        const accountsArgs = args.filter(a => a !== '--accounts' && a !== 'accounts');
+        await accountsMain(accountsArgs.length ? accountsArgs : ['list']);
+        return;
+    }
+
     printHeader();
 
-    const args = process.argv.slice(2);
     const engineFlag = args.find(a => a.startsWith('--engine='))?.split('=')[1]?.toLowerCase();
     const configStatus = await detectConfig();
 

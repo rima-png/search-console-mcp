@@ -103,7 +103,49 @@ export async function loadConfig(): Promise<AppConfig> {
         }
     }
 
-    // 3. Check for Bing Environment Variable (Semi-Legacy)
+    // 3. Check for Google Environment Variables (Legacy)
+    const hasServiceAccount = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    const hasJwt = !!process.env.GOOGLE_CLIENT_EMAIL && !!process.env.GOOGLE_PRIVATE_KEY;
+
+    if (hasServiceAccount || hasJwt) {
+        const id = 'legacy_google';
+        if (!config.accounts[id]) {
+            config.accounts[id] = {
+                id,
+                engine: 'google',
+                alias: process.env.GOOGLE_CLIENT_EMAIL || 'Service Account (env)',
+                serviceAccountPath: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+                isLegacy: true
+            };
+        }
+    }
+
+    // 3b. Check for legacy OAuth tokens (unencrypted JSON file)
+    const LEGACY_JSON_TOKEN_PATH = join(homedir(), '.search-console-mcp-tokens.json');
+    if (existsSync(LEGACY_JSON_TOKEN_PATH)) {
+        try {
+            const raw = readFileSync(LEGACY_JSON_TOKEN_PATH, 'utf-8');
+            const legacyTokens = JSON.parse(raw);
+            const id = 'legacy_google_oauth';
+            if (!config.accounts[id] && legacyTokens.refresh_token) {
+                config.accounts[id] = {
+                    id,
+                    engine: 'google',
+                    alias: 'OAuth Account (tokens.json)',
+                    tokens: {
+                        refresh_token: legacyTokens.refresh_token,
+                        expiry_date: legacyTokens.expiry_date,
+                        access_token: legacyTokens.access_token
+                    },
+                    isLegacy: true
+                };
+            }
+        } catch (e) {
+            // Ignore parse errors
+        }
+    }
+
+    // 4. Check for Bing Environment Variable (Legacy)
     const bingApiKey = process.env.BING_API_KEY;
     if (bingApiKey) {
         const id = 'legacy_bing';
@@ -111,7 +153,7 @@ export async function loadConfig(): Promise<AppConfig> {
             config.accounts[id] = {
                 id,
                 engine: 'bing',
-                alias: 'Environment Variable Account',
+                alias: 'Bing API Key (env)',
                 apiKey: bingApiKey,
                 isLegacy: true
             };

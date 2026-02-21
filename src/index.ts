@@ -2065,6 +2065,12 @@ async function main() {
     return;
   }
 
+  if (command === 'account' || command === 'accounts') {
+    const { main: accountsMain } = await import('./accounts.js');
+    await accountsMain(process.argv.slice(3));
+    return;
+  }
+
   if (command === 'logout') {
     const { runLogout } = await import('./setup.js');
     await runLogout();
