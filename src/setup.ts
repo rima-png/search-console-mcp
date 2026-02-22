@@ -677,15 +677,13 @@ async function setupGA4() {
     printBoxHeader('Google Analytics 4 Setup');
     console.log('Select authentication method:');
     console.log('1. Service Account (JSON Key)');
-    console.log('2. OAuth 2.0 (Login with Google)');
-    console.log('3. Back to main menu');
+    // console.log('2. OAuth 2.0 (Login with Google)');
+    console.log('2. Back to main menu');
 
-    const choice = await ask('\nEnter choice (1-3): ');
+    const choice = await ask('\nEnter choice (1-2): ');
 
     if (choice === '1') {
         await setupGA4ServiceAccount();
-    } else if (choice === '2') {
-        await setupGA4OAuth();
     } else {
         return;
     }

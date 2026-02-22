@@ -130,11 +130,9 @@ Connect your GA4 properties to correlate ranking data with user behavior.
 
 ### Setup:
 1.  **Run Setup**: `npx search-console-mcp setup --engine=ga4`
-2.  **Auth Method**: Choose between **OAuth 2.0** (Browser) or **Service Account** (JSON Key).
-    *   **OAuth**: Recommended for personal use.
-    *   **Service Account**: Recommended for servers. You must add the service account email as a user in **GA4 Admin > Property Settings > Property Access Management**.
+2.  **Auth Method**: Choose **Service Account** (JSON Key). This is the recommended method for server-side integrations.
+    *   **Service Account**: You must add the service account email as a user in **GA4 Admin > Property Settings > Property Access Management**.
 3.  **Property Selection**: The tool will automatically fetch all available GA4 properties for your account and let you select one from a list. You can also enter a Property ID manually if needed.
-4.  **Note on OAuth**: If you use OAuth for both GSC and GA4, they will appear as separate accounts in the CLI due to different Google API scope requirements.
 
 ---
 
