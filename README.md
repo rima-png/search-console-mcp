@@ -237,6 +237,7 @@ These are low-level tools designed to be used by other AI agents to build comple
 | `analytics_page_performance` | Detailed page metrics (sessions, engagement, views). |
 | `analytics_traffic_sources` | Analyze sessions by Channel, Source, and Medium. |
 | `analytics_organic_landing_pages` | Focused metrics for organic traffic landing pages. |
+| `analytics_content_performance` | Analyze content performance by Content Group in GA4. |
 | `analytics_conversion_funnel` | Top converting pages and events. |
 | `analytics_user_behavior` | Device, Country, and Engagement breakdown. |
 | `analytics_audience_segments` | New vs Returning, Age, and OS analysis. |

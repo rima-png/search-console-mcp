@@ -1690,7 +1690,7 @@ server.tool(
 
 server.tool(
   "analytics_content_performance",
-  "Analyze content performance by Content Group in GA4",
+  "Analyze content performance by Content Group in GA4 (Requires Content Groups to be configured in GA4 Admin)",
   {
     propertyId: z.string().describe("GA4 Property ID"),
     accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
