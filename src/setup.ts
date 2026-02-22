@@ -66,7 +66,9 @@ async function selectGA4Property(auth: any): Promise<string | undefined> {
 
         if (properties.length === 0) {
             printInfo('No GA4 properties found in this account.');
-            return await ask('Enter your GA4 Property ID manually (e.g. 123456789): ');
+            console.log(`\n${colors.yellow}💡 Hint:${colors.reset} Ensure your Google account or Service Account has been added to the GA4 Property.`);
+            console.log(`   Go to ${colors.cyan}GA4 Admin > Property Settings > Property Access Management${colors.reset} and add it.`);
+            return await ask('\nEnter your GA4 Property ID manually (e.g. 123456789): ');
         }
 
         if (properties.length === 1) {
@@ -710,11 +712,25 @@ async function setupGA4ServiceAccount() {
             printError('No path provided.');
             return;
         }
-
-        const key = validateKeyFile(keyPath);
-        if (!key) return;
-        keyPath = resolve(keyPath.replace('~', homedir()));
     }
+
+    const key = validateKeyFile(keyPath);
+    if (!key) return;
+    const serviceAccountEmail = key.client_email;
+    keyPath = resolve(keyPath.replace('~', homedir()));
+
+    printStep(2, 'Add service account to Google Analytics 4');
+    console.log('You need to add this email as a user in your GA4 Property:\n');
+    console.log(`  📧 ${colors.bold}${serviceAccountEmail}${colors.reset}\n`);
+    console.log('Steps:');
+    console.log('  1. Go to https://analytics.google.com/');
+    console.log('  2. Click "Admin" (cog icon, bottom left)');
+    console.log('  3. Select your Property');
+    console.log('  4. Click "Property Settings" > "Property Access Management"');
+    console.log(`  5. Click "+" > "Add users" and enter: ${serviceAccountEmail}`);
+    console.log('  6. Set role to "Viewer" (minimum) and click "Add"\n');
+
+    await ask('Press Enter when you\'ve added the service account to GA4...');
 
     const auth = new google.auth.GoogleAuth({
         keyFile: keyPath,
