@@ -303,7 +303,6 @@ export async function login() {
         showMcpConfigSnippet();
 
         await supportProject();
-        rl.close();
     } catch (error) {
         printError(`Authentication failed: ${(error as Error).message}`);
         console.log('\nTip: Ensure you are using a "Desktop Application" Client ID type in the Cloud Console.');
@@ -328,7 +327,6 @@ export async function runLogout() {
     } catch (error) {
         printError(`Logout failed: ${(error as Error).message}`);
     }
-    rl.close();
 }
 
 async function setupServiceAccount() {
@@ -433,7 +431,6 @@ async function setupServiceAccount() {
     console.log('\n🎉 Setup complete! You can now use Search Console MCP.\n');
 
     await supportProject();
-    rl.close();
 }
 
 async function supportProject() {
@@ -512,7 +509,6 @@ async function setupBing() {
     console.log('\n🎉 Setup complete! You can now use Search Console MCP.\n');
 
     await supportProject();
-    rl.close();
 }
 
 async function checkAndShowSites(engine: 'google' | 'bing', configStatus: any): Promise<boolean> {
@@ -559,7 +555,6 @@ async function handleGoogleFlow(configStatus: any, forceSubMenu = false) {
         const shouldProceed = await checkAndShowSites('google', configStatus);
         if (!shouldProceed) {
             console.log(`\n${colors.green}✔${colors.reset} ${colors.bold}Configuration untouched. You're ready to roll!${colors.reset}`);
-            rl.close();
             return;
         }
     }
@@ -570,7 +565,6 @@ async function handleBingFlow(configStatus: any) {
     const shouldProceed = await checkAndShowSites('bing', configStatus);
     if (!shouldProceed) {
         console.log(`\n${colors.green}✔${colors.reset} ${colors.bold}Configuration untouched. You're ready to roll!${colors.reset}`);
-        rl.close();
         return;
     }
     await setupBing();
@@ -672,7 +666,6 @@ async function handleGA4Flow(configStatus: any) {
     const shouldProceed = await checkAndShowGA4Sites(configStatus);
     if (!shouldProceed) {
         console.log(`\n${colors.green}✔${colors.reset} ${colors.bold}Configuration untouched. You're ready to roll!${colors.reset}`);
-        rl.close();
         return;
     }
     await setupGA4();
@@ -760,7 +753,6 @@ async function setupGA4ServiceAccount() {
     } catch (e) {
         printError(`Failed to connect: ${(e as Error).message}`);
     }
-    rl.close();
 }
 
 async function setupGA4OAuth() {
@@ -813,7 +805,6 @@ async function setupGA4OAuth() {
     } catch (e) {
         printError(`Failed: ${(e as Error).message}`);
     }
-    rl.close();
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
