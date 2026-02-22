@@ -578,6 +578,34 @@ server.tool(
   }
 );
 
+server.tool(
+  "inspection_batch",
+  "Inspect multiple URLs for a site in batch",
+  {
+    siteUrl: z.string().describe("The URL of the property"),
+    inspectionUrls: z.array(z.string()).describe("List of URLs to inspect (max 5)"),
+    languageCode: z.string().optional().describe("Language code for localized results (Google only)"),
+    engine: z.enum(["google", "bing"]).optional().describe("The search engine (default: google)")
+  },
+  async ({ siteUrl, inspectionUrls, languageCode, engine = "google" }) => {
+    try {
+      if (inspectionUrls.length > 5) {
+        throw new Error("Batch inspection is limited to 5 URLs at a time to prevent rate limiting.");
+      }
+
+      const results = engine === "google"
+        ? await inspection.inspectBatch(siteUrl, inspectionUrls, languageCode)
+        : await bingInspection.inspectBatch(siteUrl, inspectionUrls);
+
+      return {
+        content: [{ type: "text", text: JSON.stringify(results, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
 // PageSpeed Insights Tools
 server.tool(
   "pagespeed_analyze",

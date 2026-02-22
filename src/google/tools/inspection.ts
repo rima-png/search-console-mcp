@@ -1,5 +1,6 @@
 import { getSearchConsoleClient } from '../client.js';
 import { searchconsole_v1 } from 'googleapis';
+import { limitConcurrency } from '../../common/concurrency.js';
 
 /**
  * Inspects a URL for a site to see its current indexing status in Google Search.
@@ -23,4 +24,27 @@ export async function inspectUrl(
     }
   });
   return res.data;
+}
+
+/**
+ * Inspects multiple URLs for a site in batch.
+ *
+ * @param siteUrl - The URL of the site as defined in Search Console.
+ * @param inspectionUrls - The list of URLs to inspect.
+ * @param languageCode - The language used for localized results. Defaults to 'en-US'.
+ * @returns An array of results, each containing the URL and its inspection result or error.
+ */
+export async function inspectBatch(
+  siteUrl: string,
+  inspectionUrls: string[],
+  languageCode: string = 'en-US'
+): Promise<Array<{ url: string; result?: searchconsole_v1.Schema$InspectUrlIndexResponse; error?: string }>> {
+  return limitConcurrency(inspectionUrls, 5, async (url) => {
+    try {
+      const result = await inspectUrl(siteUrl, url, languageCode);
+      return { url, result };
+    } catch (error) {
+      return { url, error: (error as Error).message };
+    }
+  });
 }
