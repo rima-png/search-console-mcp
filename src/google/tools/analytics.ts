@@ -60,6 +60,8 @@ export interface AnalyticsOptions {
   limit?: number;
   /** Zero-based index of the first row to return. */
   startRow?: number;
+  /** Optional account ID for multi-account resolution. */
+  accountId?: string;
 }
 
 /**
@@ -163,7 +165,7 @@ export async function queryAnalytics(options: AnalyticsOptions): Promise<searchc
 
   const fetchPromise = (async () => {
     try {
-      const client = await getSearchConsoleClient(options.siteUrl);
+      const client = await getSearchConsoleClient(options.siteUrl, options.accountId);
       const requestBody: searchconsole_v1.Schema$SearchAnalyticsQueryRequest = {
         startDate: options.startDate,
         endDate: options.endDate,

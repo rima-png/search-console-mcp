@@ -1631,9 +1631,9 @@ server.tool(
     pagePath: z.string().optional().describe("Filter by specific page path"),
     limit: z.number().optional().describe("Max rows (default 50)")
   },
-  async ({ propertyId, startDate, endDate, pagePath, limit }) => {
+  async ({ propertyId, accountId, startDate, endDate, pagePath, limit }) => {
     try {
-      const result = await ga4Analytics.getPagePerformance(propertyId, startDate, endDate, pagePath, limit);
+      const result = await ga4Analytics.getPagePerformance(propertyId, startDate, endDate, pagePath, limit, accountId);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1654,9 +1654,9 @@ server.tool(
     channelGroup: z.string().optional().describe("Filter by Channel Group (e.g. 'Organic Search')"),
     limit: z.number().optional().describe("Max rows (default 50)")
   },
-  async ({ propertyId, startDate, endDate, channelGroup, limit }) => {
+  async ({ propertyId, accountId, startDate, endDate, channelGroup, limit }) => {
     try {
-      const result = await ga4Analytics.getTrafficSources(propertyId, startDate, endDate, channelGroup, limit);
+      const result = await ga4Analytics.getTrafficSources(propertyId, startDate, endDate, channelGroup, limit, accountId);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1676,9 +1676,9 @@ server.tool(
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
     limit: z.number().optional().describe("Max rows (default 50)")
   },
-  async ({ propertyId, startDate, endDate, limit }) => {
+  async ({ propertyId, accountId, startDate, endDate, limit }) => {
     try {
-      const result = await ga4Analytics.getOrganicLandingPages(propertyId, startDate, endDate, limit);
+      const result = await ga4Analytics.getOrganicLandingPages(propertyId, startDate, endDate, limit, accountId);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1698,9 +1698,9 @@ server.tool(
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
     limit: z.number().optional().describe("Max rows (default 50)")
   },
-  async ({ propertyId, startDate, endDate, limit }) => {
+  async ({ propertyId, accountId, startDate, endDate, limit }) => {
     try {
-      const result = await ga4Analytics.getContentPerformance(propertyId, startDate, endDate, limit);
+      const result = await ga4Analytics.getContentPerformance(propertyId, startDate, endDate, limit, accountId);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1720,9 +1720,9 @@ server.tool(
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
     limit: z.number().optional().describe("Max rows (default 50)")
   },
-  async ({ propertyId, startDate, endDate, limit }) => {
+  async ({ propertyId, accountId, startDate, endDate, limit }) => {
     try {
-      const result = await ga4Analytics.getEcommerce(propertyId, startDate, endDate, limit);
+      const result = await ga4Analytics.getEcommerce(propertyId, startDate, endDate, limit, accountId);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1739,9 +1739,9 @@ server.tool(
     propertyId: z.string().describe("GA4 Property ID"),
     accountId: z.string().optional().describe("GA4 account ID for multi-account setups")
   },
-  async ({ propertyId }) => {
+  async ({ propertyId, accountId }) => {
     try {
-      const result = await ga4Realtime.getRealtimeData(propertyId);
+      const result = await ga4Realtime.getRealtimeData(propertyId, accountId);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1760,9 +1760,9 @@ server.tool(
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)")
   },
-  async ({ propertyId, startDate, endDate }) => {
+  async ({ propertyId, accountId, startDate, endDate }) => {
     try {
-      const result = await ga4Behavior.getUserBehavior(propertyId, startDate, endDate);
+      const result = await ga4Behavior.getUserBehavior(propertyId, startDate, endDate, accountId);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1781,9 +1781,9 @@ server.tool(
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)")
   },
-  async ({ propertyId, startDate, endDate }) => {
+  async ({ propertyId, accountId, startDate, endDate }) => {
     try {
-      const result = await ga4Behavior.getAudienceSegments(propertyId, startDate, endDate);
+      const result = await ga4Behavior.getAudienceSegments(propertyId, startDate, endDate, accountId);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1803,9 +1803,9 @@ server.tool(
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
     eventName: z.string().optional().describe("Filter by specific event name")
   },
-  async ({ propertyId, startDate, endDate, eventName }) => {
+  async ({ propertyId, accountId, startDate, endDate, eventName }) => {
     try {
-      const result = await ga4Behavior.getConversionFunnel(propertyId, startDate, endDate, eventName);
+      const result = await ga4Behavior.getConversionFunnel(propertyId, startDate, endDate, eventName, accountId);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1827,9 +1827,9 @@ server.tool(
     limit: z.number().optional().describe("Number of pages to analyze (default 5)"),
     strategy: z.enum(["mobile", "desktop"]).optional().describe("PageSpeed strategy (default mobile)")
   },
-  async ({ propertyId, domain, startDate, endDate, limit, strategy }) => {
+  async ({ propertyId, accountId, domain, startDate, endDate, limit, strategy }) => {
     try {
-      const result = await ga4PageSpeed.getPageSpeedCorrelation(propertyId, domain, startDate, endDate, limit, strategy);
+      const result = await ga4PageSpeed.getPageSpeedCorrelation(propertyId, domain, startDate, endDate, limit, strategy, accountId);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1849,11 +1849,13 @@ server.tool(
     ga4PropertyId: z.string().describe("GA4 Property ID"),
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
-    limit: z.number().optional().describe("Max pages (default 50)")
+    limit: z.number().optional().describe("Max pages (default 50)"),
+    ga4AccountId: z.string().optional().describe("Optional GA4 account ID"),
+    gscAccountId: z.string().optional().describe("Optional GSC account ID")
   },
-  async ({ gscSiteUrl, ga4PropertyId, startDate, endDate, limit }) => {
+  async ({ gscSiteUrl, ga4PropertyId, startDate, endDate, limit, ga4AccountId, gscAccountId }) => {
     try {
-      const result = await ga4GscComparator.analyzePagesCrossPlatform(gscSiteUrl, ga4PropertyId, startDate, endDate, limit);
+      const result = await ga4GscComparator.analyzePagesCrossPlatform(gscSiteUrl, ga4PropertyId, startDate, endDate, limit, ga4AccountId, gscAccountId);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1870,11 +1872,13 @@ server.tool(
     gscSiteUrl: z.string().describe("GSC Site URL"),
     ga4PropertyId: z.string().describe("GA4 Property ID"),
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
-    endDate: z.string().describe("End date (YYYY-MM-DD)")
+    endDate: z.string().describe("End date (YYYY-MM-DD)"),
+    ga4AccountId: z.string().optional().describe("Optional GA4 account ID"),
+    gscAccountId: z.string().optional().describe("Optional GSC account ID")
   },
-  async ({ gscSiteUrl, ga4PropertyId, startDate, endDate }) => {
+  async ({ gscSiteUrl, ga4PropertyId, startDate, endDate, ga4AccountId, gscAccountId }) => {
     try {
-      const result = await ga4GscComparator.checkTrafficHealth(gscSiteUrl, ga4PropertyId, startDate, endDate);
+      const result = await ga4GscComparator.checkTrafficHealth(gscSiteUrl, ga4PropertyId, startDate, endDate, ga4AccountId, gscAccountId);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1893,11 +1897,14 @@ server.tool(
     ga4PropertyId: z.string().describe("GA4 Property ID"),
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
-    limit: z.number().optional().describe("Max results (default 20)")
+    limit: z.number().optional().describe("Max results (default 20)"),
+    ga4AccountId: z.string().optional().describe("Optional GA4 account ID"),
+    gscAccountId: z.string().optional().describe("Optional GSC account ID"),
+    bingAccountId: z.string().optional().describe("Optional Bing account ID")
   },
-  async ({ gscSiteUrl, bingSiteUrl, ga4PropertyId, startDate, endDate, limit }) => {
+  async ({ gscSiteUrl, bingSiteUrl, ga4PropertyId, startDate, endDate, limit, ga4AccountId, gscAccountId, bingAccountId }) => {
     try {
-      const result = await ga4GscBingComparator.getOpportunityMatrix(gscSiteUrl, bingSiteUrl, ga4PropertyId, startDate, endDate, limit);
+      const result = await ga4GscBingComparator.getOpportunityMatrix(gscSiteUrl, bingSiteUrl, ga4PropertyId, startDate, endDate, limit, ga4AccountId, gscAccountId, bingAccountId);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1916,11 +1923,14 @@ server.tool(
     bingSiteUrl: z.string().describe("Bing Site URL"),
     ga4PropertyId: z.string().describe("GA4 Property ID"),
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
-    endDate: z.string().describe("End date (YYYY-MM-DD)")
+    endDate: z.string().describe("End date (YYYY-MM-DD)"),
+    ga4AccountId: z.string().optional().describe("Optional GA4 account ID"),
+    gscAccountId: z.string().optional().describe("Optional GSC account ID"),
+    bingAccountId: z.string().optional().describe("Optional Bing account ID")
   },
-  async ({ brandTerms, gscSiteUrl, bingSiteUrl, ga4PropertyId, startDate, endDate }) => {
+  async ({ brandTerms, gscSiteUrl, bingSiteUrl, ga4PropertyId, startDate, endDate, ga4AccountId, gscAccountId, bingAccountId }) => {
     try {
-      const result = await ga4GscBingComparator.getBrandAnalysis(brandTerms, gscSiteUrl, bingSiteUrl, ga4PropertyId, startDate, endDate);
+      const result = await ga4GscBingComparator.getBrandAnalysis(brandTerms, gscSiteUrl, bingSiteUrl, ga4PropertyId, startDate, endDate, ga4AccountId, gscAccountId, bingAccountId);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };

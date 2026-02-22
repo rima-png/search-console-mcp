@@ -9,18 +9,21 @@ export async function analyzePagesCrossPlatform(
     ga4PropertyId: string,
     startDate: string,
     endDate: string,
-    limit: number = 50
+    limit: number = 50,
+    ga4AccountId?: string,
+    gscAccountId?: string
 ): Promise<PageAnalysisRow[]> {
     // Parallel fetch
     const [gscResult, ga4Result] = await Promise.allSettled([
         queryGSC({
             siteUrl: gscSiteUrl,
+            accountId: gscAccountId,
             startDate,
             endDate,
             dimensions: ['page'],
             limit: limit * 2 // Fetch more to ensure overlap
         }),
-        getOrganicLandingPages(ga4PropertyId, startDate, endDate, limit * 2)
+        getOrganicLandingPages(ga4PropertyId, startDate, endDate, limit * 2, ga4AccountId)
     ]);
 
     const gscRows = gscResult.status === 'fulfilled' ? gscResult.value : [];
@@ -93,16 +96,19 @@ export async function checkTrafficHealth(
     gscSiteUrl: string,
     ga4PropertyId: string,
     startDate: string,
-    endDate: string
+    endDate: string,
+    ga4AccountId?: string,
+    gscAccountId?: string
 ): Promise<TrafficHealthRow[]> {
     const [gscRows, ga4Rows] = await Promise.all([
         queryGSC({
             siteUrl: gscSiteUrl,
+            accountId: gscAccountId,
             startDate,
             endDate,
             limit: 1 // Total
         }),
-        getTrafficSources(ga4PropertyId, startDate, endDate, 'Organic Search', 100) // Increase limit to capture variants
+        getTrafficSources(ga4PropertyId, startDate, endDate, 'Organic Search', 100, ga4AccountId) // Increase limit to capture variants
     ]);
 
     const gscClicks = gscRows.reduce((sum, row) => sum + (row.clicks || 0), 0);

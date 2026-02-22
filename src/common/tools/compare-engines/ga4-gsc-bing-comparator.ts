@@ -11,11 +11,15 @@ export async function getOpportunityMatrix(
     ga4PropertyId: string,
     startDate: string,
     endDate: string,
-    limit: number = 20
+    limit: number = 20,
+    ga4AccountId?: string,
+    gscAccountId?: string,
+    bingAccountId?: string
 ): Promise<OpportunityMatrixRow[]> {
 
     const gscPromise = queryGSC({
         siteUrl: gscSiteUrl,
+        accountId: gscAccountId,
         startDate,
         endDate,
         dimensions: ['page'],
@@ -24,7 +28,7 @@ export async function getOpportunityMatrix(
 
     const bingPromise = (async () => {
         try {
-            const client = await getBingClient(bingSiteUrl);
+            const client = await getBingClient(bingSiteUrl, bingAccountId);
             return await client.getPageStats(bingSiteUrl);
         } catch (e) {
             console.error("Bing fetch failed:", e);
@@ -32,7 +36,7 @@ export async function getOpportunityMatrix(
         }
     })();
 
-    const ga4Promise = getOrganicLandingPages(ga4PropertyId, startDate, endDate, limit * 2);
+    const ga4Promise = getOrganicLandingPages(ga4PropertyId, startDate, endDate, limit * 2, ga4AccountId);
 
     const [gscResult, bingResult, ga4Result] = await Promise.allSettled([gscPromise, bingPromise, ga4Promise]);
 
@@ -146,10 +150,14 @@ export async function getBrandAnalysis(
     bingSiteUrl: string,
     ga4PropertyId: string,
     startDate: string,
-    endDate: string
+    endDate: string,
+    ga4AccountId?: string,
+    gscAccountId?: string,
+    bingAccountId?: string
 ): Promise<BrandAnalysisRow[]> {
     const gscPromise = queryGSC({
         siteUrl: gscSiteUrl,
+        accountId: gscAccountId,
         startDate,
         endDate,
         dimensions: ['query'],
@@ -158,7 +166,7 @@ export async function getBrandAnalysis(
 
     const bingPromise = (async () => {
         try {
-            const client = await getBingClient(bingSiteUrl);
+            const client = await getBingClient(bingSiteUrl, bingAccountId);
             return await client.getQueryStats(bingSiteUrl);
         } catch (e) {
             console.error("Bing fetch failed:", e);
@@ -168,7 +176,7 @@ export async function getBrandAnalysis(
 
     // GA4 doesn't expose query-level brand data. We fetch total organic sessions
     // as a contextual reference alongside GSC/Bing brand splits.
-    const ga4Promise = getOrganicLandingPages(ga4PropertyId, startDate, endDate, 5000);
+    const ga4Promise = getOrganicLandingPages(ga4PropertyId, startDate, endDate, 5000, ga4AccountId);
 
     const [gscResult, bingResult, ga4Result] = await Promise.allSettled([gscPromise, bingPromise, ga4Promise]);
 

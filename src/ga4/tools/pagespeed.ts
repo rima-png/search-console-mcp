@@ -7,7 +7,8 @@ export async function getPageSpeedCorrelation(
     startDate: string,
     endDate: string,
     limit: number = 5,
-    strategy: 'mobile' | 'desktop' = 'mobile'
+    strategy: 'mobile' | 'desktop' = 'mobile',
+    accountId?: string
 ) {
     // Normalize domain
     let baseUrl = domain.trim();
@@ -19,7 +20,7 @@ export async function getPageSpeedCorrelation(
     }
 
     // 1. Get top organic landing pages
-    const pages = await getOrganicLandingPages(propertyId, startDate, endDate, limit);
+    const pages = await getOrganicLandingPages(propertyId, startDate, endDate, limit, accountId);
 
     // 2. Run PageSpeed on each
     const results = await Promise.allSettled(

@@ -40,6 +40,7 @@ function generateCacheKey(options: any): string {
 
 export interface GA4AnalyticsOptions {
     propertyId: string;
+    accountId?: string;
     startDate?: string;
     endDate?: string;
     dimensions?: string[];
@@ -53,6 +54,7 @@ export interface GA4AnalyticsOptions {
 
 export interface GA4BatchAnalyticsOptions {
     propertyId: string;
+    accountId?: string;
     requests: Array<{
         dateRanges?: { startDate: string; endDate: string }[];
         dimensions?: string[];
@@ -82,7 +84,7 @@ export async function batchQueryAnalytics(options: GA4BatchAnalyticsOptions) {
 
     const fetchPromise = (async () => {
         try {
-            const client = await getGA4Client(options.propertyId);
+            const client = await getGA4Client(options.propertyId, options.accountId);
             const response = await client.batchRunReports({
                 requests: options.requests.map(req => ({
                     dateRanges: req.dateRanges,
@@ -135,7 +137,7 @@ export async function queryAnalytics(options: GA4AnalyticsOptions) {
 
     const fetchPromise = (async () => {
         try {
-            const client = await getGA4Client(options.propertyId);
+            const client = await getGA4Client(options.propertyId, options.accountId);
             const response = await client.runReport({
                 dateRanges: options.startDate ?
                     [{ startDate: options.startDate, endDate: options.endDate || 'today' }] : undefined,
@@ -175,7 +177,8 @@ export async function getPagePerformance(
     startDate: string,
     endDate: string,
     pagePath?: string,
-    limit: number = 50
+    limit: number = 50,
+    accountId?: string
 ) {
     const dimensionFilter = pagePath ? {
         filter: {
@@ -189,6 +192,7 @@ export async function getPagePerformance(
 
     const response = await queryAnalytics({
         propertyId,
+        accountId,
         startDate,
         endDate,
         dimensions: ['pagePath'],
@@ -214,7 +218,8 @@ export async function getTrafficSources(
     startDate: string,
     endDate: string,
     channelGroup?: string,
-    limit: number = 50
+    limit: number = 50,
+    accountId?: string
 ) {
     const dimensionFilter = channelGroup ? {
         filter: {
@@ -229,6 +234,7 @@ export async function getTrafficSources(
 
     const response = await queryAnalytics({
         propertyId,
+        accountId,
         startDate,
         endDate,
         dimensions: ['sessionDefaultChannelGroup', 'sessionSource', 'sessionMedium'],
@@ -245,10 +251,12 @@ export async function getOrganicLandingPages(
     propertyId: string,
     startDate: string,
     endDate: string,
-    limit: number = 50
+    limit: number = 50,
+    accountId?: string
 ) {
     const response = await queryAnalytics({
         propertyId,
+        accountId,
         startDate,
         endDate,
         dimensions: ['landingPagePlusQueryString'],
@@ -280,7 +288,8 @@ export async function getContentPerformance(
     propertyId: string,
     startDate: string,
     endDate: string,
-    limit: number = 50
+    limit: number = 50,
+    accountId?: string
 ) {
     // Try to query content group first?
     // Not sure if contentGroup is standard. 'contentGroup' is a standard dimension.
@@ -288,6 +297,7 @@ export async function getContentPerformance(
 
     const response = await queryAnalytics({
         propertyId,
+        accountId,
         startDate,
         endDate,
         dimensions: ['contentGroup'], // Fallback to pagePath if needed? No, separate tool or option.
@@ -312,10 +322,12 @@ export async function getEcommerce(
     propertyId: string,
     startDate: string,
     endDate: string,
-    limit: number = 50
+    limit: number = 50,
+    accountId?: string
 ) {
     const response = await queryAnalytics({
         propertyId,
+        accountId,
         startDate,
         endDate,
         dimensions: ['itemName'],

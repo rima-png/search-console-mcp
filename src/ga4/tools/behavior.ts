@@ -4,10 +4,12 @@ import { formatRows } from '../utils.js';
 export async function getUserBehavior(
     propertyId: string,
     startDate: string,
-    endDate: string
+    endDate: string,
+    accountId?: string
 ) {
     const response = await batchQueryAnalytics({
         propertyId,
+        accountId,
         requests: [
             // 1. Device Category
             {
@@ -44,10 +46,12 @@ export async function getUserBehavior(
 export async function getAudienceSegments(
     propertyId: string,
     startDate: string,
-    endDate: string
+    endDate: string,
+    accountId?: string
 ) {
     const response = await batchQueryAnalytics({
         propertyId,
+        accountId,
         requests: [
             // 1. New vs Returning
             {
@@ -87,7 +91,8 @@ export async function getConversionFunnel(
     propertyId: string,
     startDate: string,
     endDate: string,
-    eventName?: string
+    eventName?: string,
+    accountId?: string
 ) {
     const filter = eventName ? {
         filter: {
@@ -102,6 +107,7 @@ export async function getConversionFunnel(
     // Top converting pages
     const pagesPromise = queryAnalytics({
         propertyId,
+        accountId,
         startDate,
         endDate,
         dimensions: ['pagePath'],
@@ -115,6 +121,7 @@ export async function getConversionFunnel(
     // If eventName is NOT specified, it returns top events.
     const eventsPromise = queryAnalytics({
         propertyId,
+        accountId,
         startDate,
         endDate,
         dimensions: ['eventName'],
