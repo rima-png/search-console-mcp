@@ -27,7 +27,7 @@ describe('Prompts registration', () => {
     process.env = originalEnv;
   });
 
-  it('should register all 7 prompts', () => {
+  it('should register all 8 prompts', () => {
     registerPrompts(mockServer as McpServer);
     const calls = mockServer.prompt.mock.calls;
     const registeredNames = calls.map((c: any) => c[0]);
@@ -39,7 +39,8 @@ describe('Prompts registration', () => {
     expect(registeredNames).toContain('platform_comparison');
     expect(registeredNames).toContain('content_opportunity_report');
     expect(registeredNames).toContain('executive_summary');
-    expect(registeredNames).toHaveLength(7);
+    expect(registeredNames).toContain('ga4_traffic_audit');
+    expect(registeredNames).toHaveLength(8);
   });
 
   it('should generate Google-specific workflow when Google is enabled', () => {
@@ -188,5 +189,21 @@ describe('Prompts registration', () => {
     const result = dropHandler({});
     expect(result.messages[0].content.text).toContain('Synthesize');
     expect(result.messages[0].content.text).toContain('the active site');
+  });
+
+  it('should generate GA4 traffic audit steps', () => {
+    registerPrompts(mockServer as McpServer);
+
+    const ga4Prompt = mockServer.prompt.mock.calls.find((c: any) => c[0] === 'ga4_traffic_audit');
+    const ga4Handler = ga4Prompt[2];
+    const result = ga4Handler({ property_id: '458548565', date_range: 'last 30 days' });
+    const text = result.messages[0].content.text;
+
+    expect(text).toContain("analytics_traffic_sources");
+    expect(text).toContain("analytics_organic_landing_pages");
+    expect(text).toContain("analytics_conversion_funnel");
+    expect(text).toContain("analytics_user_behavior");
+    expect(text).toContain("458548565");
+    expect(text).toContain("last 30 days");
   });
 });
