@@ -1,18 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { validateSchema } from '../src/common/tools/schema-validator.js';
 
-// Mock Validator
+// Mock Validator - matches the WAE-style wrapper format: { jsonld: { [Type]: [schemas] } }
 vi.mock('@adobe/structured-data-validator', () => {
     return {
         default: class Validator {
-            async validate(schema: any) {
-                if (schema['@type'] === 'InvalidPerson') {
-                    return [{ message: 'Validation failed', type: 'error' }];
+            async validate(input: any) {
+                let schemas: any[] = [];
+                if (input.jsonld) {
+                    for (const key of Object.keys(input.jsonld)) {
+                        schemas.push(...input.jsonld[key]);
+                    }
+                } else {
+                    schemas = [input];
                 }
-                if (schema['@type'] === 'ThrowingPerson') {
-                    throw new Error('Validation internal error');
+
+                for (const schema of schemas) {
+                    if (schema['@type'] === 'InvalidPerson') {
+                        return [{ message: 'Validation failed', type: 'error' }];
+                    }
+                    if (schema['@type'] === 'ThrowingPerson') {
+                        throw new Error('Validation internal error');
+                    }
                 }
-                return { valid: true };
+                return [];
             }
         }
     };
