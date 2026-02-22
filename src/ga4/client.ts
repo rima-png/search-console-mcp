@@ -1,6 +1,6 @@
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import { google } from 'googleapis';
-import { AccountConfig, loadConfig, updateAccount } from '../common/auth/config.js';
+import { AccountConfig, loadConfig } from '../common/auth/config.js';
 import { resolveAccount } from '../common/auth/resolver.js';
 import { loadTokensForAccount, saveTokensForAccount, DEFAULT_CLIENT_ID, DEFAULT_CLIENT_SECRET } from '../google/client.js';
 
@@ -42,7 +42,12 @@ export class GA4Client {
     }
 }
 
-let cachedGA4Clients: Record<string, GA4Client> = {};
+const MAX_CLIENT_CACHE_SIZE = 10;
+const cachedGA4Clients = new Map<string, GA4Client>();
+
+export function clearGA4ClientCache() {
+    cachedGA4Clients.clear();
+}
 
 export async function getGA4Client(propertyId?: string, accountId?: string): Promise<GA4Client> {
     // 1. Resolve Account
@@ -96,8 +101,8 @@ export async function getGA4Client(propertyId?: string, accountId?: string): Pro
     }
 
     const cacheKey = `${account.id}:${targetPropertyId}`;
-    if (cachedGA4Clients[cacheKey]) {
-        return cachedGA4Clients[cacheKey];
+    if (cachedGA4Clients.has(cacheKey)) {
+        return cachedGA4Clients.get(cacheKey)!;
     }
 
     let client: BetaAnalyticsDataClient;
@@ -125,7 +130,7 @@ export async function getGA4Client(propertyId?: string, accountId?: string): Pro
             });
 
             const ga4Client = new GA4Client(client, targetPropertyId);
-            cachedGA4Clients[cacheKey] = ga4Client;
+            cacheClient(cacheKey, ga4Client);
             return ga4Client;
         } catch (error) {
             console.error(`Failed to use tokens for account ${account.alias}:`, (error as Error).message);
@@ -138,19 +143,28 @@ export async function getGA4Client(propertyId?: string, accountId?: string): Pro
             keyFilename: account.serviceAccountPath
         });
         const ga4Client = new GA4Client(client, targetPropertyId);
-        cachedGA4Clients[cacheKey] = ga4Client;
+        cacheClient(cacheKey, ga4Client);
         return ga4Client;
     }
 
     // 4. Fallback to Environment Variables (Google Application Credentials)
     if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-         client = new BetaAnalyticsDataClient({
-             keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS
-         });
-         const ga4Client = new GA4Client(client, targetPropertyId);
-         cachedGA4Clients[cacheKey] = ga4Client;
-         return ga4Client;
+        client = new BetaAnalyticsDataClient({
+            keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS
+        });
+        const ga4Client = new GA4Client(client, targetPropertyId);
+        cacheClient(cacheKey, ga4Client);
+        return ga4Client;
     }
 
     throw new Error(`Authentication configuration not found for account ${account.alias}.`);
+}
+
+function cacheClient(key: string, client: GA4Client) {
+    if (cachedGA4Clients.size >= MAX_CLIENT_CACHE_SIZE) {
+        // Evict oldest entry (first inserted)
+        const firstKey = cachedGA4Clients.keys().next().value;
+        if (firstKey) cachedGA4Clients.delete(firstKey);
+    }
+    cachedGA4Clients.set(key, client);
 }
