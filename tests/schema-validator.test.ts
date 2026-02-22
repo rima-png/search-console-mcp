@@ -6,16 +6,28 @@ import { validateSchema } from '../src/common/tools/schema-validator';
 vi.mock('@adobe/structured-data-validator', () => {
     return {
         default: class Validator {
-            async validate(schema: any) {
-                if (schema.shouldThrow) {
-                    throw new Error('Mock error');
+            async validate(input: any) {
+                let schemas: any[] = [];
+                if (input.jsonld) {
+                    for (const key of Object.keys(input.jsonld)) {
+                        schemas.push(...input.jsonld[key]);
+                    }
+                } else {
+                    schemas = [input];
                 }
-                if (schema.shouldFail) {
-                    return [{ message: 'Validation failed', type: 'error' }];
+
+                for (const schema of schemas) {
+                    if (schema.shouldThrow) {
+                        throw new Error('Mock error');
+                    }
+                    if (schema.shouldFail) {
+                        return [{ message: 'Validation failed', type: 'error' }];
+                    }
                 }
+
                 // Simulate delay
                 await new Promise(resolve => setTimeout(resolve, 10));
-                return { valid: true };
+                return [];
             }
         }
     };
