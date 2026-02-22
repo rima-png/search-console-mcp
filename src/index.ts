@@ -47,6 +47,8 @@ import { colors, printBoxHeader, printStatusLine } from './utils/ui.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { getStartedHandler, getStartedToolName, getStartedToolDescription, getStartedToolSchema } from "./common/tools/get-started.js";
+import { registerPrompts } from "./prompts/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -65,6 +67,14 @@ const server = new McpServer({
   name: "search-console-mcp",
   version: version,
 });
+
+// Get Started Tool
+server.tool(
+  getStartedToolName,
+  getStartedToolDescription,
+  getStartedToolSchema,
+  getStartedHandler
+);
 
 // Sites Tools
 server.tool(
@@ -2082,6 +2092,9 @@ If any site has a 'critical' or 'warning' status:
     };
   }
 );
+
+// Register additional prompts
+registerPrompts(server);
 
 async function main() {
   const command = process.argv[2];
