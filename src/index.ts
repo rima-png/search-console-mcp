@@ -1625,6 +1625,7 @@ server.tool(
   "Get detailed page performance metrics from GA4 (sessions, views, engagement)",
   {
     propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
     pagePath: z.string().optional().describe("Filter by specific page path"),
@@ -1647,6 +1648,7 @@ server.tool(
   "Analyze traffic sources (Channel, Source, Medium) in GA4",
   {
     propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
     channelGroup: z.string().optional().describe("Filter by Channel Group (e.g. 'Organic Search')"),
@@ -1669,6 +1671,7 @@ server.tool(
   "Get performance of organic landing pages in GA4 (matches GSC data)",
   {
     propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
     limit: z.number().optional().describe("Max rows (default 50)")
@@ -1690,6 +1693,7 @@ server.tool(
   "Analyze content performance by Content Group in GA4",
   {
     propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
     limit: z.number().optional().describe("Max rows (default 50)")
@@ -1711,6 +1715,7 @@ server.tool(
   "Get ecommerce performance (products, revenue) from GA4",
   {
     propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
     limit: z.number().optional().describe("Max rows (default 50)")
@@ -1731,7 +1736,8 @@ server.tool(
   "analytics_realtime",
   "Get realtime active users broken down by page, country, and device",
   {
-    propertyId: z.string().describe("GA4 Property ID")
+    propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups")
   },
   async ({ propertyId }) => {
     try {
@@ -1750,6 +1756,7 @@ server.tool(
   "Get user behavior breakdown (Device, Country, Engagement) in a single batch",
   {
     propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)")
   },
@@ -1770,6 +1777,7 @@ server.tool(
   "Get audience segmentation (New vs Returning, Age, OS) in a single batch",
   {
     propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)")
   },
@@ -1790,6 +1798,7 @@ server.tool(
   "Analyze top converting pages and events",
   {
     propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
     eventName: z.string().optional().describe("Filter by specific event name")
@@ -1811,6 +1820,7 @@ server.tool(
   "Correlate GA4 engagement metrics with PageSpeed Insights scores for top organic pages",
   {
     propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
     domain: z.string().describe("The domain of the site (e.g. example.com) to construct URLs"),
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
@@ -2437,9 +2447,9 @@ async function main() {
   const accounts = Object.values(config.accounts);
 
   const hasGoogle = accounts.some(a => a.engine === 'google') ||
-                    !!process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-                    (!!process.env.GOOGLE_CLIENT_EMAIL && !!process.env.GOOGLE_PRIVATE_KEY) ||
-                    existsSync(join(homedir(), '.search-console-mcp-tokens.enc')); // Legacy check
+    !!process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+    (!!process.env.GOOGLE_CLIENT_EMAIL && !!process.env.GOOGLE_PRIVATE_KEY) ||
+    existsSync(join(homedir(), '.search-console-mcp-tokens.enc')); // Legacy check
 
   const hasBing = accounts.some(a => a.engine === 'bing') || !!process.env.BING_API_KEY;
   const hasGA4 = accounts.some(a => a.engine === 'ga4');
