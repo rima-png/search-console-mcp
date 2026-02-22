@@ -168,15 +168,20 @@ export async function getBrandAnalysis(
             const client = await getBingClient(bingSiteUrl);
             return await client.getQueryStats(bingSiteUrl);
         } catch (e) {
-             console.error("Bing fetch failed:", e);
-             return [];
+            console.error("Bing fetch failed:", e);
+            return [];
         }
     })();
 
-    const [gscResult, bingResult] = await Promise.allSettled([gscPromise, bingPromise]);
+    // GA4 doesn't expose query-level brand data. We fetch total organic sessions
+    // as a contextual reference alongside GSC/Bing brand splits.
+    const ga4Promise = getOrganicLandingPages(ga4PropertyId, startDate, endDate, 5000);
+
+    const [gscResult, bingResult, ga4Result] = await Promise.allSettled([gscPromise, bingPromise, ga4Promise]);
 
     const gscRows = gscResult.status === 'fulfilled' ? gscResult.value : [];
     const bingRows = bingResult.status === 'fulfilled' ? bingResult.value : [];
+    const ga4Rows = ga4Result.status === 'fulfilled' ? ga4Result.value : [];
 
     const isBrand = (query: string) => {
         const q = query.toLowerCase();
@@ -212,6 +217,18 @@ export async function getBrandAnalysis(
         }
     }
 
+    // GA4: Compute total organic sessions as context.
+    // GA4 does not provide keyword-level brand/non-brand splits.
+    const totalOrganicSessions = ga4Rows.reduce(
+        (sum: number, row: Record<string, any>) => sum + Number(row.sessions || 0), 0
+    );
+
+    // Estimate brand session share by applying GSC brand click ratio to GA4 sessions
+    const gscTotalClicks = gscBrand.clicks + gscNonBrand.clicks;
+    const gscBrandRatio = gscTotalClicks > 0 ? gscBrand.clicks / gscTotalClicks : 0;
+    const estimatedBrandSessions = Math.round(totalOrganicSessions * gscBrandRatio);
+    const estimatedNonBrandSessions = totalOrganicSessions - estimatedBrandSessions;
+
     const rows: BrandAnalysisRow[] = [
         {
             platform: 'Google',
@@ -227,9 +244,9 @@ export async function getBrandAnalysis(
         },
         {
             platform: 'GA4',
-            brandMetrics: {},
-            nonBrandMetrics: {},
-            brandShare: 0
+            brandMetrics: { sessions: estimatedBrandSessions },
+            nonBrandMetrics: { sessions: estimatedNonBrandSessions },
+            brandShare: parseFloat(gscBrandRatio.toFixed(2))
         }
     ];
 
