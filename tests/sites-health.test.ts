@@ -157,9 +157,7 @@ describe('Sites Health Check', () => {
         });
 
         // good.com — healthy
-        mockSearchConsoleClient.sites.get
-            .mockResolvedValueOnce({ data: { siteUrl: 'https://good.com', permissionLevel: 'siteOwner' } })
-            .mockResolvedValueOnce({ data: { siteUrl: 'https://bad.com', permissionLevel: 'siteOwner' } });
+        // Note: sites.get is no longer called during iteration because site info is passed directly
 
         mockSearchConsoleClient.sitemaps.list
             .mockResolvedValueOnce({ data: { sitemap: [{ path: '/sitemap.xml', errors: 0, warnings: 0 }] } })

@@ -51,14 +51,15 @@ export interface SiteHealthReport {
  * Run a health check on a single site, returning a structured report.
  *
  * @param siteUrl - The site URL to check.
+ * @param existingSiteInfo - Optional. Pre-fetched site info to avoid redundant calls.
  * @returns A health report for the site.
  */
-async function checkSite(siteUrl: string): Promise<SiteHealthReport> {
+async function checkSite(siteUrl: string, existingSiteInfo?: Awaited<ReturnType<typeof sites.getSite>>): Promise<SiteHealthReport> {
     const issues: string[] = [];
 
     // Run all checks in parallel
     const [siteInfo, sitemapList, comparison, anomalies] = await Promise.all([
-        sites.getSite(siteUrl).catch(() => null),
+        existingSiteInfo ? Promise.resolve(existingSiteInfo) : sites.getSite(siteUrl).catch(() => null),
         sitemaps.listSitemaps(siteUrl).catch(() => []),
         getWeekOverWeekComparison(siteUrl),
         analytics.detectAnomalies(siteUrl, { days: 14, threshold: 2.5 }).catch(() => []),
@@ -197,7 +198,7 @@ export async function healthCheck(siteUrl?: string): Promise<SiteHealthReport[]>
         return [];
     }
 
-    const reports = await limitConcurrency(allSites, 5, site => checkSite(site.siteUrl!));
+    const reports = await limitConcurrency(allSites, 5, site => checkSite(site.siteUrl!, site));
 
     // Sort: critical first, then warning, then healthy
     const order = { critical: 0, warning: 1, healthy: 2 };
