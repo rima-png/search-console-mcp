@@ -134,6 +134,7 @@ Connect your GA4 properties to correlate ranking data with user behavior.
     *   **OAuth**: Recommended for personal use.
     *   **Service Account**: Recommended for servers. You must add the service account email as a user in **GA4 Admin > Property Settings > Property Access Management**.
 3.  **Property ID**: You will need your numeric **GA4 Property ID** (found in Property Settings).
+4.  **Note on OAuth**: If you use OAuth for both GSC and GA4, they will appear as separate accounts in the CLI due to different Google API scope requirements.
 
 ---
 

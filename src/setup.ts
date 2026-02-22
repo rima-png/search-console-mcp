@@ -663,15 +663,15 @@ async function setupGA4ServiceAccount() {
     }
 
     if (!keyPath) {
-         keyPath = await ask('Enter the path to your JSON key file: ');
-         if (!keyPath) {
-             printError('No path provided.');
-             return;
-         }
+        keyPath = await ask('Enter the path to your JSON key file: ');
+        if (!keyPath) {
+            printError('No path provided.');
+            return;
+        }
 
-         const key = validateKeyFile(keyPath);
-         if (!key) return;
-         keyPath = resolve(keyPath.replace('~', homedir()));
+        const key = validateKeyFile(keyPath);
+        if (!key) return;
+        keyPath = resolve(keyPath.replace('~', homedir()));
     }
 
     const propertyId = await ask('Enter your GA4 Property ID (e.g. 123456789): ');
@@ -712,6 +712,8 @@ async function setupGA4ServiceAccount() {
 async function setupGA4OAuth() {
     printStep(1, 'Browser Authorization');
     console.log('Using Secure Desktop Flow.');
+    printInfo('Note: GA4 requires different Google permissions than Search Console.');
+    printInfo('If you use the same email, it will appear as a separate account in the CLI.');
 
     const clientId = DEFAULT_CLIENT_ID;
     const clientSecret = DEFAULT_CLIENT_SECRET;
@@ -720,30 +722,30 @@ async function setupGA4OAuth() {
     try {
         const tokens = await startLocalFlow(clientId, clientSecret, SCOPES);
         const email = await getUserEmail(tokens);
-         console.log(`\nAuthorized as: ${colors.bold}${email}${colors.reset}`);
+        console.log(`\nAuthorized as: ${colors.bold}${email}${colors.reset}`);
 
-         const propertyId = await ask('Enter your GA4 Property ID (e.g. 123456789): ');
-         if (!propertyId) return;
+        const propertyId = await ask('Enter your GA4 Property ID (e.g. 123456789): ');
+        if (!propertyId) return;
 
-         // Validate
-         printInfo('Verifying access...');
-         const { BetaAnalyticsDataClient } = await import('@google-analytics/data');
-         const { google } = await import('googleapis');
-         const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
-         oauth2Client.setCredentials(tokens);
+        // Validate
+        printInfo('Verifying access...');
+        const { BetaAnalyticsDataClient } = await import('@google-analytics/data');
+        const { google } = await import('googleapis');
+        const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+        oauth2Client.setCredentials(tokens);
 
-         const client = new BetaAnalyticsDataClient({ authClient: oauth2Client as any });
-         await client.runReport({
-             property: `properties/${propertyId}`,
-             dateRanges: [{ startDate: 'today', endDate: 'today' }],
-             metrics: [{ name: 'activeUsers' }],
-             limit: 1
-         });
-         printSuccess('Connection successful!');
+        const client = new BetaAnalyticsDataClient({ authClient: oauth2Client as any });
+        await client.runReport({
+            property: `properties/${propertyId}`,
+            dateRanges: [{ startDate: 'today', endDate: 'today' }],
+            metrics: [{ name: 'activeUsers' }],
+            limit: 1
+        });
+        printSuccess('Connection successful!');
 
-         const alias = await ask(`Enter an alias for this account (optional, default: ${email}-${propertyId}): `) || `${email}-${propertyId}`;
+        const alias = await ask(`Enter an alias for this account (optional, default: ${email}-${propertyId}): `) || `${email}-${propertyId}`;
 
-         const account: AccountConfig = {
+        const account: AccountConfig = {
             id: `ga4_${Date.now()}`,
             engine: 'ga4',
             alias,
@@ -755,7 +757,7 @@ async function setupGA4OAuth() {
         printSuccess(`Successfully added GA4 account ${alias}!`);
         showMcpConfigSnippet();
     } catch (e) {
-         printError(`Failed: ${(e as Error).message}`);
+        printError(`Failed: ${(e as Error).message}`);
     }
     rl.close();
 }
