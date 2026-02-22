@@ -11,15 +11,15 @@ const { mockGClient, mockGoogleAuth, mockOAuth2, mockRl, MockBingClient } = vi.h
         }
     };
 
-    const mockGoogleAuth = vi.fn(function() {
+    const mockGoogleAuth = vi.fn(function () {
         return { getClient: vi.fn().mockResolvedValue({}) };
     });
 
-    const mockOAuth2 = vi.fn(function() {
+    const mockOAuth2 = vi.fn(function () {
         return { setCredentials: vi.fn() };
     });
 
-    const MockBingClient = vi.fn(function() {
+    const MockBingClient = vi.fn(function () {
         return { getSiteList: vi.fn().mockResolvedValue([]) };
     });
 
@@ -115,7 +115,7 @@ describe('Setup Full', () => {
     });
 
     describe('validateKeyFile', () => {
-         it('should return null if file not found', () => {
+        it('should return null if file not found', () => {
             vi.mocked(fs.existsSync).mockReturnValue(false);
             const result = setupModule.validateKeyFile('missing.json');
             expect(result).toBeNull();
@@ -152,7 +152,7 @@ describe('Setup Full', () => {
         });
 
         it('should return null if invalid type', () => {
-             vi.mocked(fs.existsSync).mockReturnValue(true);
+            vi.mocked(fs.existsSync).mockReturnValue(true);
             vi.mocked(fs.statSync).mockReturnValue({ isFile: () => true } as any);
             vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({
                 type: 'user',
@@ -249,10 +249,10 @@ describe('Setup Full', () => {
         });
 
         it('should handle main menu exit', async () => {
-             process.argv = ['node', 'setup.ts'];
-             mockAnswers = ['3'];
-             await setupModule.main();
-             expect(mockRl.close).toHaveBeenCalled();
+            process.argv = ['node', 'setup.ts'];
+            mockAnswers = ['4'];
+            await setupModule.main();
+            expect(mockRl.close).toHaveBeenCalled();
         });
     });
 });
