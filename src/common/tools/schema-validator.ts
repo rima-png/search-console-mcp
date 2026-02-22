@@ -58,7 +58,17 @@ export async function validateSchema(
         const validator = new Validator();
         const validationPromises = schemas.map(async (schema) => {
             try {
-                const result = await validator.validate(schema);
+                let type = schema['@type'];
+                if (Array.isArray(type)) {
+                    type = type[0];
+                }
+                const wrapper = {
+                    jsonld: {
+                        [type || 'Thing']: [schema]
+                    }
+                };
+                const result = await validator.validate(wrapper);
+
                 if (result && Array.isArray(result) && result.length > 0) {
                     // result is array of errors
                     return result.map((err: any) => ({
