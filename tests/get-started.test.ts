@@ -72,4 +72,33 @@ describe('get_started tool', () => {
     expect(trafficGroup.tools.some((t: any) => t.name === 'analytics_anomalies')).toBe(true);
     expect(trafficGroup.tools.some((t: any) => t.name === 'bing_analytics_detect_anomalies')).toBe(true);
   });
+
+  it('should show accounts_list for Bing-only users', async () => {
+    delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    delete process.env.GOOGLE_CLIENT_EMAIL;
+    delete process.env.GOOGLE_PRIVATE_KEY;
+    process.env.BING_API_KEY = 'fake-key';
+
+    const result = await getStartedHandler();
+    const content = JSON.parse(result.content[0].text);
+
+    const accountGroup = content.intent_groups.find((g: any) => g.name === 'Account Management');
+    expect(accountGroup).toBeDefined();
+    expect(accountGroup.tools.some((t: any) => t.name === 'accounts_list')).toBe(true);
+  });
+
+  it('should handle neither-platform-enabled scenario', async () => {
+    delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    delete process.env.GOOGLE_CLIENT_EMAIL;
+    delete process.env.GOOGLE_PRIVATE_KEY;
+    delete process.env.BING_API_KEY;
+
+    const result = await getStartedHandler();
+    const content = JSON.parse(result.content[0].text);
+
+    expect(content.active_platforms).toEqual({});
+    // Should still have a server summary and basic structure
+    expect(content.server_summary).toBeDefined();
+    expect(content.recommended_starting_points).toBeDefined();
+  });
 });

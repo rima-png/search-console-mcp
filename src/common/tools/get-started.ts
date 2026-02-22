@@ -1,8 +1,6 @@
-import { existsSync } from "fs";
-import { join } from "path";
-import { homedir } from "os";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { formatError } from "../errors.js";
+import { getEnabledPlatforms } from "../platforms.js";
 
 export const getStartedToolName = "get_started";
 export const getStartedToolDescription = "Start here. Returns a complete map of this server's capabilities, active platforms, and recommended workflows. Call this once at the beginning of any session.";
@@ -11,11 +9,7 @@ export const getStartedToolSchema = {};
 
 export async function getStartedHandler() {
     try {
-        const hasServiceAccount = !!process.env.GOOGLE_APPLICATION_CREDENTIALS || (!!process.env.GOOGLE_CLIENT_EMAIL && !!process.env.GOOGLE_PRIVATE_KEY);
-        const tokenPath = join(homedir(), '.search-console-mcp-tokens.enc');
-        const hasOAuthTokens = existsSync(tokenPath);
-        const isGoogleEnabled = hasServiceAccount || hasOAuthTokens;
-        const isBingEnabled = !!process.env.BING_API_KEY;
+        const { isGoogleEnabled, isBingEnabled } = getEnabledPlatforms();
 
         const activePlatforms: Record<string, string> = {};
         if (isGoogleEnabled) activePlatforms["google"] = "Google Search Console (Search Analytics, Sitemaps, Inspection)";
@@ -221,8 +215,8 @@ export async function getStartedHandler() {
                         prefer_over: null,
                         next_tool: "sites_health_check"
                     },
-                    ...(isGoogleEnabled ? [
-                         {
+                    ...(isGoogleEnabled || isBingEnabled ? [
+                        {
                             name: "accounts_list",
                             purpose: "List all authorized Google and Bing accounts.",
                             prefer_over: null,
