@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { listSites } from '../src/bing/tools/sites.js';
+import { listSites, addSite, removeSite } from '../src/bing/tools/sites.js';
 import { getQueryStats, getPageStats, getPageQueryStats } from '../src/bing/tools/analytics.js';
 import { getKeywordStats } from '../src/bing/tools/keywords.js';
 import { getCrawlIssues } from '../src/bing/tools/crawl.js';
 import { getUrlSubmissionQuota, submitUrl, submitUrlBatch } from '../src/bing/tools/url-submission.js';
-import { submitSitemap, listSitemaps } from '../src/bing/tools/sitemaps.js';
+import { submitSitemap, listSitemaps, deleteSitemap } from '../src/bing/tools/sitemaps.js';
 
 const fetch = vi.fn();
 global.fetch = fetch as any;
@@ -26,6 +26,28 @@ describe('Bing Tools', () => {
             const result = await listSites();
             expect(result).toEqual(mockSites);
             expect(fetch).toHaveBeenCalledWith(expect.stringContaining('GetUserSites'), expect.any(Object));
+        });
+
+        it('should add a site', async () => {
+            (fetch as any).mockResolvedValue({
+                ok: true,
+                json: async () => ({ d: null }),
+            });
+
+            const result = await addSite('https://new.com');
+            expect(result).toContain('Successfully added site');
+            expect(fetch).toHaveBeenCalledWith(expect.stringContaining('AddSite'), expect.any(Object));
+        });
+
+        it('should remove a site', async () => {
+            (fetch as any).mockResolvedValue({
+                ok: true,
+                json: async () => ({ d: null }),
+            });
+
+            const result = await removeSite('https://old.com');
+            expect(result).toContain('Successfully removed site');
+            expect(fetch).toHaveBeenCalledWith(expect.stringContaining('RemoveSite'), expect.any(Object));
         });
     });
 
@@ -124,6 +146,17 @@ describe('Bing Tools', () => {
 
             const result = await listSitemaps('https://example.com');
             expect(result).toEqual(mockSitemaps);
+        });
+
+        it('should delete sitemap', async () => {
+            (fetch as any).mockResolvedValue({
+                ok: true,
+                json: async () => ({ d: null }),
+            });
+
+            const result = await deleteSitemap('https://example.com', 'feedUrl');
+            expect(result).toContain('Successfully removed sitemap');
+            expect(fetch).toHaveBeenCalledWith(expect.stringContaining('RemoveFeed'), expect.any(Object));
         });
     });
 });

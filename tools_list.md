@@ -39,6 +39,7 @@
 | Tool | Description |
 | :--- | :--- |
 | `inspection_inspect` | **Google URL Inspection API**. Check index status, crawl errors, and mobile usability real-time. |
+| `inspection_batch` | **[NEW]** Inspect up to 5 URLs simultaneously (Google & Bing). Per-URL error isolation with concurrency control. |
 | `pagespeed_analyze` | Run a full **Lighthouse** analysis (Performance, SEO, Accessibility, Best Practices). |
 | `pagespeed_core_web_vitals` | Get Chrome UX Report (CrUX) data for Core Web Vitals (LCP, CLS, INP). |
 | `schema_validate` | Validate **JSON-LD Structure Data** against Schema.org standards. |

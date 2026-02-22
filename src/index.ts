@@ -53,6 +53,8 @@ import { colors, printBoxHeader, printStatusLine } from './utils/ui.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { getStartedHandler, getStartedToolName, getStartedToolDescription, getStartedToolSchema } from "./common/tools/get-started.js";
+import { registerPrompts } from "./prompts/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -71,6 +73,14 @@ const server = new McpServer({
   name: "search-console-mcp",
   version: version,
 });
+
+// Get Started Tool
+server.tool(
+  getStartedToolName,
+  getStartedToolDescription,
+  getStartedToolSchema,
+  getStartedHandler
+);
 
 // Sites Tools
 server.tool(
@@ -577,6 +587,34 @@ server.tool(
         : await bingInspection.getUrlInfo(siteUrl, inspectionUrl);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "inspection_batch",
+  "Inspect multiple URLs for a site in batch",
+  {
+    siteUrl: z.string().describe("The URL of the property"),
+    inspectionUrls: z.array(z.string()).describe("List of URLs to inspect (max 5)"),
+    languageCode: z.string().optional().describe("Language code for localized results (Google only)"),
+    engine: z.enum(["google", "bing"]).optional().describe("The search engine (default: google)")
+  },
+  async ({ siteUrl, inspectionUrls, languageCode, engine = "google" }) => {
+    try {
+      if (inspectionUrls.length > 5) {
+        throw new Error("Batch inspection is limited to 5 URLs at a time to prevent rate limiting.");
+      }
+
+      const results = engine === "google"
+        ? await inspection.inspectBatch(siteUrl, inspectionUrls, languageCode)
+        : await bingInspection.inspectBatch(siteUrl, inspectionUrls);
+
+      return {
+        content: [{ type: "text", text: JSON.stringify(results, null, 2) }]
       };
     } catch (error) {
       return formatError(error);
@@ -2362,6 +2400,9 @@ If any site has a 'critical' or 'warning' status:
     };
   }
 );
+
+// Register additional prompts
+registerPrompts(server);
 
 async function main() {
   const command = process.argv[2];
