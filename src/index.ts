@@ -2140,7 +2140,7 @@ server.prompt(
   "analyze-site-performance",
   {
     siteUrl: z.string().describe("The URL of the site to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    engine: z.enum(["google", "bing", "ga4"]).optional().describe("The search engine to use (default: google)"),
     startDate: z.string().optional().describe("Start date (YYYY-MM-DD), defaults to 1 month ago"),
     endDate: z.string().optional().describe("End date (YYYY-MM-DD), defaults to today")
   },
@@ -2157,13 +2157,15 @@ server.prompt(
         role: "user",
         content: {
           type: "text",
-          text: `Please analyze the performance of the site ${siteUrl} on ${engine === 'google' ? 'Google' : 'Bing'} for the period ${start} to ${end}.
+          text: `Please analyze the performance of the site ${siteUrl} on ${engine === 'google' ? 'Google' : engine === 'bing' ? 'Bing' : 'GA4'} for the period ${start} to ${end}.
         
         ${engine === 'google'
               ? `Use the 'analytics_query' tool with startDate='${start}' and endDate='${end}' to get detailed metrics.`
-              : `Use the 'bing_analytics_query' tool with startDate='${start}' and endDate='${end}' to get query stats and 'bing_analytics_page' for page-level performance.`}
+              : engine === 'bing'
+                ? `Use the 'bing_analytics_query' tool with startDate='${start}' and endDate='${end}' to get query stats and 'bing_analytics_page' for page-level performance.`
+                : `Use the 'analytics_page_performance' and 'analytics_traffic_sources' tools with propertyId='[PROPERTY_ID]', startDate='${start}' and endDate='${end}'.`}
         
-        Provide a summary of the site's health and any opportunities for improvement on ${engine === 'google' ? 'Google' : 'Bing'}.`
+        Provide a summary of the site's health and any opportunities for improvement on ${engine === 'google' ? 'Google' : engine === 'bing' ? 'Bing' : 'GA4'}.`
         }
       }]
     };
@@ -2174,7 +2176,7 @@ server.prompt(
   "compare-performance",
   {
     siteUrl: z.string().describe("The URL of the site to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    engine: z.enum(["google", "bing", "ga4"]).optional().describe("The search engine to use (default: google)"),
     months: z.number().optional().describe("Number of months to compare (default: 1)")
   },
   ({ siteUrl, engine = "google", months = 1 }) => {
@@ -2204,15 +2206,16 @@ ${engine === 'google'
 - period2Start: '${start2}', period2End: '${end2}'
 
 Analyze the changes in clicks, impressions, CTR, and position.
-Highlight any significant improvements or declines.
 If there are notable changes, use 'analytics_top_queries' to identify which queries are driving the change.`
-              : `Use the 'bing_analytics_compare_periods' tool with:
+              : engine === 'bing'
+                ? `Use the 'bing_analytics_compare_periods' tool with:
 - startDate1: '${start1}', endDate1: '${end1}'
 - startDate2: '${start2}', endDate2: '${end2}'
 
 Analyze the changes in clicks, impressions, CTR, and position.
-Highlight any significant improvements or declines.
-Use 'bing_analytics_query' with date filters to identify which queries are driving changes in traffic.`
+Use 'bing_analytics_query' to identify which queries are driving changes.`
+                : `Use the 'analytics_page_performance' tool twice (once for each period: ${start1} to ${end1} and ${start2} to ${end2}) to compare sessions and engagement.
+Analyze changes in key metrics and identify top performing pages.`
             }`
         }
       }]
@@ -2224,7 +2227,7 @@ server.prompt(
   "find-declining-pages",
   {
     siteUrl: z.string().describe("The URL of the site to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    engine: z.enum(["google", "bing", "ga4"]).optional().describe("The search engine to use (default: google)"),
     months: z.number().optional().describe("Number of months to analyze (default: 1)")
   },
   ({ siteUrl, engine = "google", months = 1 }) => {
@@ -2247,10 +2250,14 @@ ${engine === 'google'
 1. Use 'analytics_compare_periods' to compare this period (${start} to ${end}) vs the previous ${months} month(s)
 2. Use 'analytics_query' with dimension 'page' to get page-level data
 3. Identify pages with significant click/impression drops`
-              : `Steps:
+              : engine === 'bing'
+                ? `Steps:
 1. Use 'bing_analytics_compare_periods' to identify overall traffic direction.
 2. Use 'bing_analytics_page' with startDate='${start}' and endDate='${end}' to get top pages.
 3. Use 'bing_analytics_page_query' for specific pages to see which queries dropped.`
+                : `Steps:
+1. Use 'analytics_page_performance' for the current period and compare it to historical data.
+2. Identify landing pages with significant drops in sessions or engagement.`
             }
 
 For each declining page, provide:
@@ -2267,7 +2274,7 @@ server.prompt(
   "keyword-opportunities",
   {
     siteUrl: z.string().describe("The URL of the site to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    engine: z.enum(["google", "bing", "ga4"]).optional().describe("The search engine to use (default: google)"),
     months: z.number().optional().describe("Number of months of data to analyze (default: 3)")
   },
   ({ siteUrl, engine = "google", months = 3 }) => {
@@ -2285,10 +2292,11 @@ server.prompt(
           type: "text",
           text: `Find keyword opportunities for ${siteUrl} on ${engine === 'google' ? 'Google' : 'Bing'} for the last ${months} months (${start} to ${end}).
         
-        ${engine === 'google'
+${engine === 'google'
               ? "Use 'analytics_top_queries' or 'seo_low_hanging_fruit' to find high-potential targets."
-              : `Use 'bing_opportunity_finder' or 'bing_striking_distance' to find high-potential keywords.
-               Use the filtering parameters (startDate='${start}', endDate='${end}') where available in Bing tools.`}
+              : engine === 'bing'
+                ? `Use 'bing_opportunity_finder' or 'bing_striking_distance' to find high-potential keywords.`
+                : `Note: GA4 does not provide keyword-level data. Use 'analytics_organic_landing_pages' to find top organic pages and 'analytics_page_performance' to identify engagement opportunities.`}
         
         Analyze for:
         1. **Low CTR, High Impressions**: Queries where you rank but don't get clicks
@@ -2307,7 +2315,7 @@ server.prompt(
   {
     siteUrl: z.string().describe("The URL of the site"),
     pageUrl: z.string().describe("The URL of the new content to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    engine: z.enum(["google", "bing", "ga4"]).optional().describe("The search engine to use (default: google)"),
     months: z.number().optional().describe("Number of months to analyze (default: 1)")
   },
   ({ siteUrl, pageUrl, engine = "google", months = 1 }) => {
@@ -2325,9 +2333,9 @@ server.prompt(
           type: "text",
           text: `Analyze the impact of new content at ${pageUrl} on site ${siteUrl} in ${engine === 'google' ? 'Google' : 'Bing'} for the period ${start} to ${end}.
 
-1. Use '${engine === 'google' ? 'inspection_inspect' : 'bing_url_info'}' to check indexing status.
-2. Use '${engine === 'google' ? 'analytics_query' : 'bing_analytics_page_query'}' with startDate='${start}' and endDate='${end}' to get performance for this specific URL.
-3. Identify which queries are driving traffic to this page.
+1. Use '${engine === 'google' ? 'inspection_inspect' : engine === 'bing' ? 'bing_url_info' : 'analytics_page_performance'}' to check status.
+2. Use '${engine === 'google' ? 'analytics_query' : engine === 'bing' ? 'bing_analytics_page_query' : 'analytics_page_performance'}' with startDate='${start}' and endDate='${end}' to get performance for this specific URL.
+3. Identify which queries (GSC/Bing) or traffic sources (GA4) are driving traffic to this page.
 
 Provide:
 - Indexing status
@@ -2344,7 +2352,7 @@ server.prompt(
   "mobile-vs-desktop",
   {
     siteUrl: z.string().describe("The URL of the site to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    engine: z.enum(["google", "bing", "ga4"]).optional().describe("The search engine to use (default: google)"),
     months: z.number().optional().describe("Number of months to analyze (default: 1)")
   },
   ({ siteUrl, engine = "google", months = 1 }) => {
@@ -2364,7 +2372,9 @@ server.prompt(
 
 ${engine === 'google'
               ? `Use 'analytics_query' with dimension 'device', startDate='${start}', and endDate='${end}' to get device-level metrics.`
-              : "Note: Bing Webmaster API provides limited native device breakdown via the public API, but check if 'bing_analytics_query' or 'bing_analytics_page' results show device distinctions if available."}
+              : engine === 'bing'
+                ? "Note: Bing Webmaster API provides limited native device breakdown via the public API."
+                : `Use 'analytics_user_behavior' to get a full device breakdown (Mobile vs Desktop vs Tablet) for GA4.`}
 
 Analyze:
 1. Click and impression distribution across devices (if data available)
@@ -2386,7 +2396,7 @@ server.prompt(
   "site-health-check",
   {
     siteUrl: z.string().optional().describe("Optional. The URL of a specific site to check."),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    engine: z.enum(["google", "bing", "ga4"]).optional().describe("The search engine to use (default: google)"),
     months: z.number().optional().describe("Number of months to analyze for trends (default: 1)")
   },
   ({ siteUrl, engine = "google", months = 1 }) => {
@@ -2404,16 +2414,16 @@ server.prompt(
           type: "text",
           text: `Run a comprehensive health check for ${siteUrl ? siteUrl : 'all verified sites'} on ${engine === 'google' ? 'Google' : 'Bing'} analyzing the period ${start} to ${end}.
 
-Use the '${engine === 'google' ? 'sites_health_check' : 'bing_sites_health'}' tool.
+Use the '${engine === 'google' ? 'sites_health_check' : engine === 'bing' ? 'bing_sites_health' : 'analytics_user_behavior'}' tool.
 
 Then for each site in the results:
 1. **Summarize the status** (healthy / warning / critical).
-2. **Performance:** Report changes in clicks, impressions, CTR, and position by comparing this period to the previous one.
-3. **Sitemaps:** Note any errors or warnings (use '${engine === 'google' ? 'sitemaps_list' : 'bing_crawl_issues'}').
-4. **Anomalies:** Highlight any traffic drops (use '${engine === 'google' ? 'analytics_anomalies' : 'bing_analytics_detect_anomalies'}' with appropriate day counts).
+2. **Performance:** Report changes in key metrics (clicks/impressions for search, sessions/engagement for GA4).
+3. **Internal Health:** Note any errors or warnings (use '${engine === 'google' ? 'sitemaps_list' : engine === 'bing' ? 'bing_crawl_issues' : 'analytics_conversion_funnel'}').
+4. **Anomalies:** Highlight any traffic drops (use '${engine === 'google' ? 'analytics_anomalies' : engine === 'bing' ? 'bing_analytics_detect_anomalies' : 'analytics_realtime'}').
 
 If any site has a 'critical' or 'warning' status:
-- For critical drops, use '${engine === 'google' ? 'analytics_drop_attribution' : 'bing_analytics_drop_attribution'}'.
+- For critical drops, use '${engine === 'google' ? 'analytics_drop_attribution' : engine === 'bing' ? 'bing_analytics_drop_attribution' : 'analytics_user_behavior'}'.
 - Provide 3 prioritized action items.`
         }
       }]

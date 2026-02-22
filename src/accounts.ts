@@ -38,7 +38,8 @@ export async function main(args: string[]) {
                     resolution: {
                         command: "search-console-mcp setup",
                         google: "search-console-mcp setup --engine=google",
-                        bing: "search-console-mcp setup --engine=bing"
+                        bing: "search-console-mcp setup --engine=bing",
+                        ga4: "search-console-mcp setup --engine=ga4"
                     },
                     setup_instructions: {
                         google: [
@@ -50,6 +51,11 @@ export async function main(args: string[]) {
                             "Run: search-console-mcp setup --engine=bing",
                             "Get your API key from https://www.bing.com/webmasters/settings/api",
                             "Enter the API key when prompted"
+                        ],
+                        ga4: [
+                            "Run: search-console-mcp setup --engine=ga4",
+                            "Choose Service Account (OAuth coming soon)",
+                            "Add the service account email to your GA4 property"
                         ]
                     }
                 }, null, 2));
@@ -60,7 +66,7 @@ export async function main(args: string[]) {
 
             for (const a of accounts) {
                 const alias = a.alias || '[Unnamed]';
-                const engine = a.engine === 'google' ? 'Google' : 'Bing';
+                const engine = a.engine === 'google' ? 'Google' : a.engine === 'bing' ? 'Bing' : 'GA4';
 
                 if (!a.websites || a.websites.length === 0) {
                     siteRows.push({
