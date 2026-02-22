@@ -539,8 +539,6 @@ export async function main() {
         return;
     }
 
-    printHeader();
-
     const engineFlag = args.find(a => a.startsWith('--engine='))?.split('=')[1]?.toLowerCase();
     const configStatus = await detectConfig();
 
@@ -555,31 +553,35 @@ export async function main() {
         return;
     }
 
-    printDetectionSummary(configStatus);
+    while (true) {
+        printHeader();
+        printDetectionSummary(configStatus);
 
-    console.log(`${colors.bold}Let’s wire this up. Pick your integration.${colors.reset}`);
+        console.log(`${colors.bold}Let’s wire this up. Pick your integration.${colors.reset}`);
 
-    console.log(`\n1. Google Search Console`);
-    console.log('2. Google Analytics 4');
-    console.log('3. Bing Webmaster Tools');
-    console.log('4. Exit');
+        console.log(`\n1. Google Search Console`);
+        console.log('2. Google Analytics 4');
+        console.log('3. Bing Webmaster Tools');
+        console.log('4. Exit');
 
-    const choice = await ask(`\n${colors.bold}${colors.cyan}Enter your choice (1-4): ${colors.reset}`);
+        const choice = await ask(`\n${colors.bold}${colors.cyan}Enter your choice (1-4): ${colors.reset}`);
 
-    switch (choice) {
-        case '1':
-            await handleGoogleFlow(configStatus, true);
-            break;
-        case '2':
-            await handleGA4Flow(configStatus);
-            break;
-        case '3':
-            await handleBingFlow(configStatus);
-            break;
-        default:
-            console.log(`\n${colors.dim}See you on the flip side!${colors.reset}`);
-            rl.close();
-            break;
+        switch (choice) {
+            case '1':
+                await handleGoogleFlow(configStatus, true);
+                break;
+            case '2':
+                await handleGA4Flow(configStatus);
+                break;
+            case '3':
+                await handleBingFlow(configStatus);
+                break;
+            case '4':
+            default:
+                console.log(`\n${colors.dim}See you on the flip side!${colors.reset}`);
+                rl.close();
+                return;
+        }
     }
 }
 
@@ -599,8 +601,7 @@ async function googleSubMenu(configStatus: any) {
             await setupServiceAccount();
             break;
         default:
-            await main();
-            break;
+            return;
     }
 }
 
@@ -643,7 +644,7 @@ async function setupGA4() {
     } else if (choice === '2') {
         await setupGA4OAuth();
     } else {
-        await main();
+        return;
     }
 }
 

@@ -2,6 +2,7 @@ import { queryAnalytics as queryGSC } from '../../../google/tools/analytics.js';
 import { getOrganicLandingPages, getTrafficSources } from '../../../ga4/tools/analytics.js';
 import { PageAnalysisRow, TrafficHealthRow } from './types.js';
 import { normalizeGA4Row } from './ga4-adapters.js';
+import { extractUrlPath, extractBasePropertyName } from './utils.js';
 
 export async function analyzePagesCrossPlatform(
     gscSiteUrl: string,
@@ -11,7 +12,7 @@ export async function analyzePagesCrossPlatform(
     limit: number = 50
 ): Promise<PageAnalysisRow[]> {
     // Parallel fetch
-    const [gscRows, ga4Rows] = await Promise.all([
+    const [gscResult, ga4Result] = await Promise.allSettled([
         queryGSC({
             siteUrl: gscSiteUrl,
             startDate,
@@ -22,16 +23,20 @@ export async function analyzePagesCrossPlatform(
         getOrganicLandingPages(ga4PropertyId, startDate, endDate, limit * 2)
     ]);
 
+    const gscRows = gscResult.status === 'fulfilled' ? gscResult.value : [];
+    const ga4Rows = ga4Result.status === 'fulfilled' ? ga4Result.value : [];
+
     // Map GA4 rows by path
     const ga4Map = new Map<string, any>();
     for (const row of ga4Rows) {
         // row.landingPagePlusQueryString is path
-        let path = row.landingPagePlusQueryString || row.pagePath;
+        const path = row.landingPagePlusQueryString || row.pagePath;
         if (path) {
             ga4Map.set(path, row);
             // Also normalized path (without query string)
-            if (path.includes('?')) {
-                ga4Map.set(path.split('?')[0], row);
+            const basePath = path.split('?')[0];
+            if (basePath !== path) {
+                ga4Map.set(basePath, row);
             }
         }
     }
@@ -40,21 +45,12 @@ export async function analyzePagesCrossPlatform(
 
     for (const gscRow of gscRows) {
         const url = gscRow.keys?.[0] || '';
-        let path = '';
-        try {
-            const urlObj = new URL(url);
-            path = urlObj.pathname + urlObj.search;
-        } catch (e) {
-            path = url; // Fallback
-        }
+        const path = extractUrlPath(url);
 
         // Try exact path match first, then path without query string
         let ga4Row = ga4Map.get(path);
         if (!ga4Row) {
-            try {
-                const urlObj = new URL(url);
-                ga4Row = ga4Map.get(urlObj.pathname);
-            } catch (e) { }
+            ga4Row = ga4Map.get(extractBasePropertyName(url));
         }
 
         if (ga4Row || (gscRow.clicks || 0) > 0) { // Only include if relevant

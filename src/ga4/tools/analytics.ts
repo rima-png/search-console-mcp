@@ -24,7 +24,18 @@ export function clearAnalyticsCache() {
 }
 
 function generateCacheKey(options: any): string {
-    return JSON.stringify(options, Object.keys(options).sort());
+    // Recursive stable stringify to handle nested object key ordering
+    const sortObject = (obj: any): any => {
+        if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) {
+            return obj;
+        }
+        const sorted: any = {};
+        Object.keys(obj).sort().forEach(key => {
+            sorted[key] = sortObject(obj[key]);
+        });
+        return sorted;
+    };
+    return JSON.stringify(sortObject(options));
 }
 
 export interface GA4AnalyticsOptions {
@@ -285,7 +296,16 @@ export async function getContentPerformance(
         orderBys: [{ metric: { metricName: 'sessions' }, desc: true }]
     });
 
-    return formatRows(response);
+    const rows = formatRows(response);
+
+    if (rows.length > 0 && rows.every((r: any) => r.contentGroup === '(not set)')) {
+        return {
+            warning: "All rows returned '(not set)'. This usually means Content Groups are not configured in your GA4 property.",
+            rows
+        };
+    }
+
+    return rows;
 }
 
 export async function getEcommerce(

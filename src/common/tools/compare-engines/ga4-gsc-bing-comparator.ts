@@ -3,6 +3,7 @@ import { getBingClient } from '../../../bing/client.js';
 import { getOrganicLandingPages } from '../../../ga4/tools/analytics.js';
 import { OpportunityMatrixRow, BrandAnalysisRow } from './types.js';
 import { normalizeGA4Row } from './ga4-adapters.js';
+import { extractUrlPath } from './utils.js';
 
 export async function getOpportunityMatrix(
     gscSiteUrl: string,
@@ -45,12 +46,7 @@ export async function getOpportunityMatrix(
     // Process GSC
     for (const row of gscRows) {
         const url = row.keys?.[0] || '';
-        let path = '';
-        try {
-            const u = new URL(url);
-            path = u.pathname + u.search;
-        } catch { path = url; }
-
+        const path = extractUrlPath(url);
         map.set(path, {
             url,
             gsc: {
@@ -67,11 +63,8 @@ export async function getOpportunityMatrix(
 
     // Process Bing
     for (const row of bingRows) {
-        let path = '';
-        try {
-            const u = new URL(row.Query);
-            path = u.pathname + u.search;
-        } catch { path = row.Query; }
+        // Bing API returns the URL in the 'Query' field for GetPageStats results
+        const path = extractUrlPath(row.Query);
 
         const existing = map.get(path);
         const bingStats = {

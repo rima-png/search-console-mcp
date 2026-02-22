@@ -1,5 +1,6 @@
 export function formatRows(response: any) {
-    return (response.rows || []).map((row: any) => {
+    if (!response || !response.rows) return [];
+    return response.rows.map((row: any) => {
         const item: Record<string, any> = {};
 
         // Map dimensions
