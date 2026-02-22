@@ -50,6 +50,54 @@ function printInfo(text: string) {
     console.log(`${colors.blue}ℹ${colors.reset} ${colors.dim}${text}${colors.reset}`);
 }
 
+async function selectGA4Property(auth: any): Promise<string | undefined> {
+    printInfo('Fetching available GA4 properties...');
+    try {
+        const admin = google.analyticsadmin('v1beta');
+        const response = await admin.accountSummaries.list({ auth });
+
+        const properties: { id: string, name: string }[] = [];
+        for (const account of response.data.accountSummaries || []) {
+            for (const prop of account.propertySummaries || []) {
+                const id = prop.property?.replace('properties/', '') || '';
+                properties.push({ id, name: prop.displayName || id });
+            }
+        }
+
+        if (properties.length === 0) {
+            printInfo('No GA4 properties found in this account.');
+            return await ask('Enter your GA4 Property ID manually (e.g. 123456789): ');
+        }
+
+        if (properties.length === 1) {
+            printSuccess(`Found property: ${colors.bold}${properties[0].name}${colors.reset} (${properties[0].id})`);
+            const useIt = await ask('Use it? (Y/n): ');
+            if (useIt === '' || useIt.toLowerCase().startsWith('y')) {
+                return properties[0].id;
+            }
+        } else {
+            console.log(`\nFound ${properties.length} properties:`);
+            properties.forEach((p, i) => {
+                console.log(`${colors.cyan}[${i + 1}]${colors.reset} ${p.name} ${colors.dim}(${p.id})${colors.reset}`);
+            });
+            console.log(`${colors.cyan}[M]${colors.reset} Enter manually`);
+
+            const choice = await ask(`\nSelect property (1-${properties.length}) or M: `);
+            if (choice.toLowerCase() === 'm') {
+                return await ask('Enter your GA4 Property ID manually: ');
+            }
+            const index = parseInt(choice) - 1;
+            if (index >= 0 && index < properties.length) {
+                return properties[index].id;
+            }
+        }
+    } catch (e) {
+        printInfo(`Note: Could not fetch property list automatically: ${(e as Error).message}`);
+        return await ask('Enter your GA4 Property ID manually (e.g. 123456789): ');
+    }
+    return undefined;
+}
+
 async function detectConfig() {
     const config = await loadConfig();
     const accounts = Object.values(config.accounts);
@@ -675,7 +723,12 @@ async function setupGA4ServiceAccount() {
         keyPath = resolve(keyPath.replace('~', homedir()));
     }
 
-    const propertyId = await ask('Enter your GA4 Property ID (e.g. 123456789): ');
+    const auth = new google.auth.GoogleAuth({
+        keyFile: keyPath,
+        scopes: ['https://www.googleapis.com/auth/analytics.readonly']
+    });
+
+    const propertyId = await selectGA4Property(auth);
     if (!propertyId) return;
 
     // Validate
@@ -725,15 +778,15 @@ async function setupGA4OAuth() {
         const email = await getUserEmail(tokens);
         console.log(`\nAuthorized as: ${colors.bold}${email}${colors.reset}`);
 
-        const propertyId = await ask('Enter your GA4 Property ID (e.g. 123456789): ');
+        const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+        oauth2Client.setCredentials(tokens);
+
+        const propertyId = await selectGA4Property(oauth2Client);
         if (!propertyId) return;
 
         // Validate
         printInfo('Verifying access...');
         const { BetaAnalyticsDataClient } = await import('@google-analytics/data');
-        const { google } = await import('googleapis');
-        const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
-        oauth2Client.setCredentials(tokens);
 
         const client = new BetaAnalyticsDataClient({ authClient: oauth2Client as any });
         await client.runReport({
