@@ -51,41 +51,41 @@ export async function analyzePagesCrossPlatform(
         // Try exact path match first, then path without query string
         let ga4Row = ga4Map.get(path);
         if (!ga4Row) {
-             try {
-                 const urlObj = new URL(url);
-                 ga4Row = ga4Map.get(urlObj.pathname);
-             } catch (e) {}
+            try {
+                const urlObj = new URL(url);
+                ga4Row = ga4Map.get(urlObj.pathname);
+            } catch (e) { }
         }
 
         if (ga4Row || (gscRow.clicks || 0) > 0) { // Only include if relevant
-             const ga4Stats = ga4Row ? normalizeGA4Row(ga4Row) : undefined;
-             const gscStats = {
-                 clicks: gscRow.clicks || 0,
-                 impressions: gscRow.impressions || 0,
-                 ctr: gscRow.ctr || 0,
-                 position: gscRow.position || 0
-             };
+            const ga4Stats = ga4Row ? normalizeGA4Row(ga4Row) : undefined;
+            const gscStats = {
+                clicks: gscRow.clicks || 0,
+                impressions: gscRow.impressions || 0,
+                ctr: gscRow.ctr || 0,
+                position: gscRow.position || 0
+            };
 
-             // Derived metrics
-             let clickToSessionRatio = 0;
-             if (gscStats.clicks > 0 && ga4Stats) {
-                 clickToSessionRatio = ga4Stats.sessions / gscStats.clicks;
-             }
+            // Derived metrics
+            let clickToSessionRatio = 0;
+            if (gscStats.clicks > 0 && ga4Stats) {
+                clickToSessionRatio = ga4Stats.sessions / gscStats.clicks;
+            }
 
-             // Opportunity Score
-             const visibilityScore = Math.log10(gscStats.impressions + 1);
-             const engagementScore = ga4Stats ? ga4Stats.engagementRate : 0;
-             const conversionScore = ga4Stats ? Math.log10(ga4Stats.conversions + 1) : 0;
+            // Opportunity Score
+            const visibilityScore = Math.log10(gscStats.impressions + 1);
+            const engagementScore = ga4Stats ? ga4Stats.engagementRate : 0;
+            const conversionScore = ga4Stats ? Math.log10(ga4Stats.conversions + 1) : 0;
 
-             const opportunityScore = (visibilityScore * 10) + (engagementScore * 100) + (conversionScore * 20);
+            const opportunityScore = (visibilityScore * 10) + (engagementScore * 100) + (conversionScore * 20);
 
-             results.push({
-                 url,
-                 gsc: gscStats,
-                 ga4: ga4Stats,
-                 clickToSessionRatio: parseFloat(clickToSessionRatio.toFixed(2)),
-                 opportunityScore: parseFloat(opportunityScore.toFixed(2))
-             });
+            results.push({
+                url,
+                gsc: gscStats,
+                ga4: ga4Stats,
+                clickToSessionRatio: parseFloat(clickToSessionRatio.toFixed(2)),
+                opportunityScore: parseFloat(opportunityScore.toFixed(2))
+            });
         }
     }
 
@@ -98,7 +98,7 @@ export async function checkTrafficHealth(
     ga4PropertyId: string,
     startDate: string,
     endDate: string
-): Promise<TrafficHealthRow> {
+): Promise<TrafficHealthRow[]> {
     const [gscRows, ga4Rows] = await Promise.all([
         queryGSC({
             siteUrl: gscSiteUrl,
@@ -129,12 +129,12 @@ export async function checkTrafficHealth(
         recommendation = "No GSC clicks recorded.";
     }
 
-    return {
+    return [{
         date: `${startDate} to ${endDate}`,
         gscClicks,
         ga4OrganicSessions,
         ratio: parseFloat(ratio.toFixed(2)),
         classification,
         recommendation
-    };
+    }];
 }
