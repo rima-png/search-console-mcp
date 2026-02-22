@@ -126,7 +126,10 @@ export async function getGA4Client(propertyId?: string, accountId?: string): Pro
             }
 
             client = new BetaAnalyticsDataClient({
-                authClient: oauth2Client as any // Cast because type definitions might slightly mismatch between versions
+                // googleapis OAuth2Client extends google-auth-library's AuthClient.
+                // google-gax ClientOptions expects AuthClient, but the type declarations
+                // don't overlap cleanly. Validated with @google-analytics/data@5.2.1.
+                authClient: oauth2Client as any
             });
 
             const ga4Client = new GA4Client(client, targetPropertyId);

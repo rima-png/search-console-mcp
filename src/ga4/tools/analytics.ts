@@ -5,11 +5,19 @@ const CACHE_TTL_MS = 60 * 1000; // 60 seconds
 const MAX_CACHE_SIZE = 100;
 
 interface CacheValue {
+    type: 'resolved';
     data: any;
     timestamp: number;
 }
 
-const analyticsCache = new Map<string, CacheValue | Promise<any>>();
+interface CachePending {
+    type: 'pending';
+    promise: Promise<any>;
+}
+
+type CacheEntry = CacheValue | CachePending;
+
+const analyticsCache = new Map<string, CacheEntry>();
 
 export function clearAnalyticsCache() {
     analyticsCache.clear();
@@ -52,8 +60,8 @@ export async function batchQueryAnalytics(options: GA4BatchAnalyticsOptions) {
     const cached = analyticsCache.get(cacheKey);
 
     if (cached) {
-        if ('then' in cached) {
-            return cached;
+        if (cached.type === 'pending') {
+            return cached.promise;
         }
         if (now - cached.timestamp < CACHE_TTL_MS) {
             return cached.data;
@@ -78,6 +86,7 @@ export async function batchQueryAnalytics(options: GA4BatchAnalyticsOptions) {
             });
 
             analyticsCache.set(cacheKey, {
+                type: 'resolved',
                 data: response,
                 timestamp: Date.now()
             });
@@ -94,7 +103,7 @@ export async function batchQueryAnalytics(options: GA4BatchAnalyticsOptions) {
         }
     })();
 
-    analyticsCache.set(cacheKey, fetchPromise);
+    analyticsCache.set(cacheKey, { type: 'pending', promise: fetchPromise });
     return fetchPromise;
 }
 
@@ -104,8 +113,8 @@ export async function queryAnalytics(options: GA4AnalyticsOptions) {
     const cached = analyticsCache.get(cacheKey);
 
     if (cached) {
-        if ('then' in cached) {
-            return cached;
+        if (cached.type === 'pending') {
+            return cached.promise;
         }
         if (now - cached.timestamp < CACHE_TTL_MS) {
             return cached.data;
@@ -129,6 +138,7 @@ export async function queryAnalytics(options: GA4AnalyticsOptions) {
             });
 
             analyticsCache.set(cacheKey, {
+                type: 'resolved',
                 data: response,
                 timestamp: Date.now()
             });
@@ -145,7 +155,7 @@ export async function queryAnalytics(options: GA4AnalyticsOptions) {
         }
     })();
 
-    analyticsCache.set(cacheKey, fetchPromise);
+    analyticsCache.set(cacheKey, { type: 'pending', promise: fetchPromise });
     return fetchPromise;
 }
 
@@ -295,7 +305,7 @@ export async function getEcommerce(
 
     // Check if we have data. If total revenue is 0 across all rows, maybe return warning.
     const rows = formatRows(response);
-    if (rows.length === 0 || (rows.length > 0 && rows.every((r: any) => r.itemRevenue === 0 && r.itemsPurchased === 0))) {
+    if (rows.length === 0 || (rows.length > 0 && rows.every((r: Record<string, number>) => r.itemRevenue === 0 && r.itemsPurchased === 0))) {
         return {
             warning: "No ecommerce data found for this property.",
             rows: []
