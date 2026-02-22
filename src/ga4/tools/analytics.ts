@@ -252,8 +252,9 @@ export async function getOrganicLandingPages(
             filter: {
                 fieldName: 'sessionDefaultChannelGroup',
                 stringFilter: {
-                    matchType: 'EXACT',
-                    value: 'Organic Search' // or 'Organic' depending on GA4 version/setup, usually 'Organic Search' in default channel group
+                    matchType: 'CONTAINS',
+                    value: 'Organic Search',
+                    caseSensitive: false
                 }
             }
         },
