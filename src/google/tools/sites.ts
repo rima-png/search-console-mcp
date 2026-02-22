@@ -2,12 +2,13 @@ import { getSearchConsoleClient } from '../client.js';
 import { searchconsole_v1 } from 'googleapis';
 
 /**
- * List all sites verified in the current user's Google Search Console.
+ * List all sites verified in the specified Google account.
  *
+ * @param accountId - Optional. The account to list sites for.
  * @returns A list of verified site properties.
  */
-export async function listSites(): Promise<searchconsole_v1.Schema$WmxSite[]> {
-  const client = await getSearchConsoleClient();
+export async function listSites(accountId?: string): Promise<searchconsole_v1.Schema$WmxSite[]> {
+  const client = await getSearchConsoleClient(undefined, accountId);
   const res = await client.sites.list();
   return res.data.siteEntry || [];
 }
@@ -19,7 +20,7 @@ export async function listSites(): Promise<searchconsole_v1.Schema$WmxSite[]> {
  * @returns A success message.
  */
 export async function addSite(siteUrl: string): Promise<string> {
-  const client = await getSearchConsoleClient();
+  const client = await getSearchConsoleClient(siteUrl);
   await client.sites.add({ siteUrl });
   return `Successfully added site: ${siteUrl}`;
 }
@@ -31,7 +32,7 @@ export async function addSite(siteUrl: string): Promise<string> {
  * @returns A success message.
  */
 export async function deleteSite(siteUrl: string): Promise<string> {
-  const client = await getSearchConsoleClient();
+  const client = await getSearchConsoleClient(siteUrl);
   await client.sites.delete({ siteUrl });
   return `Successfully deleted site: ${siteUrl}`;
 }
@@ -43,7 +44,7 @@ export async function deleteSite(siteUrl: string): Promise<string> {
  * @returns Site metadata including verification status.
  */
 export async function getSite(siteUrl: string): Promise<searchconsole_v1.Schema$WmxSite> {
-  const client = await getSearchConsoleClient();
+  const client = await getSearchConsoleClient(siteUrl);
   const res = await client.sites.get({ siteUrl });
   return res.data;
 }

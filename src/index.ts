@@ -26,6 +26,10 @@ import * as bingSeoInsights from "./bing/tools/seo-insights.js";
 import * as indexNow from "./bing/tools/index-now.js";
 import * as bingAdvancedAnalytics from "./bing/tools/advanced-analytics.js";
 import * as compareEnginesTool from "./common/tools/compare-engines/index.js";
+import { loadConfig, removeAccount, updateAccount, AccountConfig } from './common/auth/config.js';
+import { resolveAccount } from './common/auth/resolver.js';
+import { getSearchConsoleClient } from './google/client.js';
+import { getBingClient } from './bing/client.js';
 import {
   bingApiDocs,
   indexNowDocs,
@@ -65,13 +69,41 @@ const server = new McpServer({
 // Sites Tools
 server.tool(
   "sites_list",
-  "List all verified sites",
+  "List all verified sites across all authorized accounts",
   { engine: z.enum(["google", "bing"]).optional().describe("The search engine (default: google)") },
   async ({ engine = "google" }) => {
     try {
-      const results = engine === "google" ? await sites.listSites() : await bingSites.listSites();
+      const config = await loadConfig();
+      const accounts = Object.values(config.accounts).filter(a => a.engine === engine);
+
+      if (accounts.length === 0 && engine === 'bing' && process.env.BING_API_KEY) {
+        // Fallback for legacy Bing
+        const results = await bingSites.listSites();
+        return { content: [{ type: "text", text: JSON.stringify(results, null, 2) }] };
+      }
+
+      const allResults = [];
+      for (const account of accounts) {
+        try {
+          const results = engine === "google"
+            ? await sites.listSites(account.id)
+            : await bingSites.listSites(account.id);
+          allResults.push({
+            account: account.alias,
+            accountId: account.id,
+            sites: results
+          });
+        } catch (e) {
+          allResults.push({
+            account: account.alias,
+            accountId: account.id,
+            error: (e as Error).message
+          });
+        }
+      }
+
       return {
-        content: [{ type: "text", text: JSON.stringify(results, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(allResults, null, 2) }]
       };
     } catch (error) {
       return formatError(error);
@@ -763,6 +795,74 @@ server.tool(
   }
 );
 
+
+// Account Management Tools
+server.tool(
+  "accounts_list",
+  "List all authorized Google and Bing accounts",
+  {},
+  async () => {
+    try {
+      const config = await loadConfig();
+      const accounts = Object.values(config.accounts).map(a => ({
+        id: a.id,
+        engine: a.engine,
+        alias: a.alias,
+        websites: a.websites || [],
+        isLegacy: a.isLegacy || false
+      }));
+      return {
+        content: [{ type: "text", text: JSON.stringify(accounts, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "accounts_add_site",
+  "Authorize a specific site or domain for an account (Account Boundary)",
+  {
+    accountId: z.string().describe("The ID of the account"),
+    site: z.string().describe("The site URL or domain (e.g., example.com)")
+  },
+  async ({ accountId, site }) => {
+    try {
+      const config = await loadConfig();
+      const account = config.accounts[accountId];
+      if (!account) throw new Error(`Account ${accountId} not found.`);
+
+      if (!account.websites) account.websites = [];
+      if (!account.websites.includes(site)) {
+        account.websites.push(site);
+        await updateAccount(account);
+      }
+
+      return {
+        content: [{ type: "text", text: `Successfully authorized ${site} for account ${account.alias}.` }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "accounts_remove",
+  "Remove an authorized account",
+  { accountId: z.string().describe("The ID of the account to remove") },
+  async ({ accountId }) => {
+    try {
+      await removeAccount(accountId);
+      return {
+        content: [{ type: "text", text: `Account ${accountId} removed successfully.` }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
 
 // SEO Primitives (Atoms)
 server.tool(
@@ -1962,6 +2062,12 @@ async function main() {
   if (command === 'setup') {
     const { main: setupMain } = await import('./setup.js');
     await setupMain();
+    return;
+  }
+
+  if (command === 'account' || command === 'accounts') {
+    const { main: accountsMain } = await import('./accounts.js');
+    await accountsMain(process.argv.slice(3));
     return;
   }
 

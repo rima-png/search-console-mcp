@@ -32,6 +32,16 @@ Show me the overall status, week-over-week performance changes, and any sitemap 
 If there are issues, cross-reference with my local code to see if a recent deploy could have caused them.
 ```
 
+## The "Bing Optimization" Prompt
+Use this to find Bing-specific wins from your IDE.
+
+```markdown
+Compare my site's performance on Google vs. Bing using the compare_engines tool.
+For any keywords flagged as 'bing_opportunity', check my page's meta tags and structured data.
+Are there any Bing-specific meta tags (like bingbot directives) missing from my codebase that could improve rankings?
+```
+
 ## Why these work well
 *   **Contextual Awareness:** Cursor knows your code. By using the MCP, it also knows your *results*. This bridge allows it to make code suggestions based on search performance.
 *   **Zero-Context Switching:** You don't have to leave your editor to know that your recent deploy slowed down your most important landing page.
+*   **Multi-Engine:** Compare Google and Bing data side by side and fix issues directly in your code.

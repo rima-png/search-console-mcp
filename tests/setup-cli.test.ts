@@ -1,4 +1,3 @@
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { runLogout } from '../src/setup.js';
 import * as googleClient from '../src/google/client.js';
@@ -7,10 +6,36 @@ import * as googleClient from '../src/google/client.js';
 vi.mock('../src/google/client.js', () => ({
     logout: vi.fn(),
     startLocalFlow: vi.fn(),
-    saveTokens: vi.fn(),
+    saveTokensForAccount: vi.fn(),
     getUserEmail: vi.fn(),
     DEFAULT_CLIENT_ID: 'mock-id',
     DEFAULT_CLIENT_SECRET: 'mock-secret'
+}));
+
+// Mock googleapis
+vi.mock('googleapis', () => ({
+    google: {
+        auth: {
+            OAuth2: class {
+                setCredentials() { }
+            }
+        },
+        searchconsole: vi.fn().mockReturnValue({
+            sites: {
+                list: vi.fn().mockResolvedValue({
+                    data: { siteEntry: [{ siteUrl: 'https://test.com/' }] }
+                })
+            }
+        })
+    }
+}));
+
+// Mock the config module
+vi.mock('../src/common/auth/config.js', () => ({
+    loadConfig: vi.fn().mockResolvedValue({ accounts: {} }),
+    updateAccount: vi.fn().mockResolvedValue(undefined),
+    saveConfig: vi.fn().mockResolvedValue(undefined),
+    removeAccount: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock console.log/error to keep test output clean
@@ -23,7 +48,7 @@ const consoleSpy = {
 vi.mock('readline', () => ({
     createInterface: () => ({
         close: vi.fn(),
-        question: vi.fn((q, cb) => cb('n')),
+        question: vi.fn((q, cb) => cb('')),
     })
 }));
 
@@ -35,28 +60,16 @@ describe('CLI Commands', () => {
     });
 
     describe('runLogout', () => {
-        it('should logout of default account when no email is provided', async () => {
+        it('should logout with provided account ID', async () => {
+            // Simulate CLI args: npx search-console-mcp logout google_id
+            process.argv = ['node', 'script', 'logout', 'google_id'];
             await runLogout();
-
-            expect(googleClient.logout).toHaveBeenCalledWith(undefined);
-            expect(consoleSpy.log).toHaveBeenCalledWith(expect.stringContaining('Successfully logged out from default account'));
-        });
-
-        it('should logout of specific account when email is provided via CLI args', async () => {
-            // Simulate CLI args: npx search-console-mcp logout user@example.com
-            process.argv = ['node', 'script', 'logout', 'user@example.com'];
-
-            await runLogout();
-
-            expect(googleClient.logout).toHaveBeenCalledWith('user@example.com');
-            expect(consoleSpy.log).toHaveBeenCalledWith(expect.stringContaining('Successfully logged out and removed credentials for user@example.com'));
+            expect(googleClient.logout).toHaveBeenCalledWith('google_id');
         });
 
         it('should handle logout errors gracefully', async () => {
             vi.mocked(googleClient.logout).mockRejectedValue(new Error('Keychain error'));
-
             await runLogout();
-
             expect(consoleSpy.log).toHaveBeenCalledWith(expect.stringContaining('Logout failed: Keychain error'));
         });
     });
@@ -71,9 +84,8 @@ describe('CLI Commands', () => {
             // Mock successfully 
             vi.mocked(googleClient.startLocalFlow).mockResolvedValue({ access_token: 'fake-token' });
             vi.mocked(googleClient.getUserEmail).mockResolvedValue('test@example.com');
-            vi.mocked(googleClient.saveTokens).mockResolvedValue(undefined);
 
-            // Import login dynamically or use top-level if exported
+            // Import login dynamically
             const { login } = await import('../src/setup.js');
 
             try {
@@ -83,9 +95,12 @@ describe('CLI Commands', () => {
             }
 
             expect(googleClient.startLocalFlow).toHaveBeenCalled();
-            expect(googleClient.getUserEmail).toHaveBeenCalledWith({ access_token: 'fake-token' });
-            expect(googleClient.saveTokens).toHaveBeenCalledWith({ access_token: 'fake-token' }, 'test@example.com');
-            expect(consoleSpy.log).toHaveBeenCalledWith(expect.stringContaining('Successfully authenticated as test@example.com!'));
+            expect(googleClient.getUserEmail).toHaveBeenCalledWith(expect.objectContaining({ access_token: 'fake-token' }));
+            expect(googleClient.saveTokensForAccount).toHaveBeenCalledWith(
+                expect.objectContaining({ alias: 'test@example.com' }),
+                expect.objectContaining({ access_token: 'fake-token' })
+            );
+            expect(consoleSpy.log).toHaveBeenCalledWith(expect.stringContaining('Successfully added account test@example.com!'));
         });
 
         it('should handle login failure', async () => {

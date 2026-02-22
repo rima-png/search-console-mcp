@@ -13,16 +13,22 @@ A Model Context Protocol (MCP) server that transforms how you interact with **Go
 ## Why use this?
 
 ### ❌ The Old Way
-1.  Open Search Console -> Performance Tab
-2.  Filter by "Last 28 days"
-3.  Export to CSV
-4.  Open in Excel/Sheets
-5.  Create a filter for "Position > 10" AND "Impressions > 1000"
-6.  Analyze manually to find opportunities
+1.  Open Google Search Console → Export CSV
+2.  Open Bing Webmaster Tools → Export CSV
+3.  Paste both into a spreadsheet
+4.  Manually compare keywords across engines
+5.  Switch between accounts for different clients
+6.  Repeat weekly
 
 ### ✅ The New Way
 **Just ask:**
 > "Find low-hanging fruit keywords (positions 11-20) with high impressions that I should optimize."
+
+> "Compare my Google and Bing performance — where am I leaving Bing traffic on the table?"
+
+> "Run a health check across all my sites and give me 3 actions for next week."
+
+**One server. Both engines. Multiple accounts. Zero spreadsheets.**
 
 ---
 ## 🎯 Magic Prompts
@@ -47,15 +53,21 @@ Copy and paste these into your MCP client (Claude Desktop, etc.) to see the inte
 #### ⚡ The Speed vs. Ranking Correlator
 > "Fetch the top 5 pages by impressions. For these pages, run a PageSpeed audit. Is there any correlation between low performance scores and recently declining positions?"
 
-#### 🔍 Multi-Engine Comparison
+#### 🔀 Multi-Engine Comparison
 > "Compare my performance between Google and Bing for the last 30 days. Which keywords are ranking better on Bing but have lower traffic on Google?"
+
+#### 🎯 Bing Opportunity Finder
+> "Show me keywords where I'm in the top 5 on Google but not ranking on Bing. These are my easy Bing wins."
+
+#### ⚠️ Google Dependency Check
+> "Am I too dependent on Google? Check my click share across both engines and flag any keywords where over 85% of traffic comes from Google."
 
 ---
 
 ## 🔐 Authentication (Desktop Flow)
 
 Search Console MCP uses a **Secure Desktop Flow**. This provides high-security, professional grade authentication for your Google account:
-- **Multi-Account Support**: Automatically detects and stores separate tokens for different Google accounts based on your email.
+- **Multi-Account Support**: Connect multiple Google and Bing accounts. The server automatically picks the right one for each site.
 - **System Keychain Primary**: Tokens are stored in your OS's native credential manager (macOS Keychain, Windows Credential Manager, or Linux Secret Service).
 - **AES-256-GCM Hardware-Bound Encryption**: Fallback storage is encrypted with AES-256-GCM using a key derived from your unique hardware machine ID. Tokens stolen from your machine cannot be decrypted on another computer.
 - **Silent Background Refresh**: Tokens auto-refresh silently when they expire.
@@ -112,16 +124,36 @@ To access Bing data, you simply need an API Key.
 
 ---
 
+## 👥 Multi-Account Management
+
+Manage multiple Google and Bing accounts from the CLI:
+
+```bash
+# List all connected accounts
+npx search-console-mcp accounts list
+
+# Remove an account
+npx search-console-mcp accounts remove --account=marketing@company.com
+
+# Add a site boundary to an account
+npx search-console-mcp accounts add-site --account=marketing@company.com --site=example.com
+```
+
+When your AI agent queries a site, the server automatically resolves which account to use. [Learn more →](https://searchconsolemcp.mintlify.app/getting-started/multi-account)
+
+---
+
 
 ## 🛡️ Fort Knox Security
 
 This MCP server implements a multi-layered security architecture:
 
 *   **Keychain Integration**: Primarily uses the **macOS Keychain**, **Windows Credential Manager**, or **libsecret (Linux)** to store tokens.
-*   **Hardware-Bound Vault**: Fallback tokens are stored in `~/.search-console-mcp-tokens.enc` and encrypted with **AES-256-GCM**.
+*   **Encrypted Config**: Account configuration is stored in `~/.search-console-mcp-config.enc` using **AES-256-GCM** encryption.
 *   **Machine Fingerprinting**: The encryption key is derived from your unique hardware UUID and OS user. The encrypted file is useless if moved to another machine.
 *   **Minimalist Storage**: Only the `refresh_token` and `expiry_date` are stored.
-*   **Strict Unix Permissions**: The fallback file is created with `mode 600` (read/write only by your user).
+*   **Legacy Support**: Automatically detects credentials from older versions (tokens files, environment variables).
+*   **Strict Unix Permissions**: Config files are created with `mode 600` (read/write only by your user).
 
 ---
 

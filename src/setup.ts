@@ -6,9 +6,12 @@ import { createInterface } from 'readline';
 import { homedir } from 'os';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
-import { startLocalFlow, saveTokens, getUserEmail, logout, loadTokens, getSearchConsoleClient, DEFAULT_CLIENT_ID, DEFAULT_CLIENT_SECRET } from './google/client.js';
-import { getBingClient } from './bing/client.js';
+import { startLocalFlow, getUserEmail, logout, getSearchConsoleClient, DEFAULT_CLIENT_ID, DEFAULT_CLIENT_SECRET, saveTokensForAccount } from './google/client.js';
+import { getBingClient, BingClient } from './bing/client.js';
+import { google } from 'googleapis';
+import { loadConfig, updateAccount, AccountConfig } from './common/auth/config.js';
 import { colors, printBoxHeader, printStatusLine } from './utils/ui.js';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -48,37 +51,25 @@ function printInfo(text: string) {
 }
 
 async function detectConfig() {
-    const results = {
-        googleOAuth: false,
-        googleServiceAccount: false,
-        bing: false,
+    const config = await loadConfig();
+    const accounts = Object.values(config.accounts);
+    return {
+        googleAccounts: accounts.filter(a => a.engine === 'google'),
+        bingAccounts: accounts.filter(a => a.engine === 'bing'),
+        legacyBing: !!process.env.BING_API_KEY
     };
-
-    // 1. Google OAuth
-    try {
-        const tokens = await loadTokens();
-        if (tokens) results.googleOAuth = true;
-    } catch (e) { }
-
-    // 2. Google Service Account
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS || (process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY)) {
-        results.googleServiceAccount = true;
-    }
-
-    // 3. Bing
-    if (process.env.BING_API_KEY) results.bing = true;
-
-    return results;
 }
 
 function printDetectionSummary(results: any) {
-    const googleConnected = results.googleOAuth || results.googleServiceAccount;
-    const bingConnected = results.bing;
+    const gCount = results.googleAccounts ? results.googleAccounts.length : 0;
+    const bCount = (results.bingAccounts ? results.bingAccounts.length : 0) + (results.legacyBing ? 1 : 0);
+
+    if (gCount === 0 && bCount === 0) return;
 
     console.log(`${colors.bold}${colors.dim}🔍 Connection Status${colors.reset}\n`);
 
-    printStatusLine('Google', googleConnected);
-    printStatusLine('Bing', bingConnected);
+    printStatusLine('Google Search Console', gCount > 0);
+    printStatusLine('Bing Webmaster Tools', bCount > 0);
     console.log('');
 }
 
@@ -155,16 +146,13 @@ export async function testConnection(keyPath: string): Promise<boolean> {
     }
 }
 
-export function showConfigSnippets(credentialsPath: string) {
+export function showMcpConfigSnippet() {
     console.log('\nAdd this to your MCP client configuration:\n');
     console.log(JSON.stringify({
         mcpServers: {
             "search-console": {
                 command: "npx",
-                args: ["-y", "search-console-mcp"],
-                env: {
-                    GOOGLE_APPLICATION_CREDENTIALS: credentialsPath
-                }
+                args: ["-y", "search-console-mcp"]
             }
         }
     }, null, 2));
@@ -209,12 +197,59 @@ export async function login() {
         printInfo('Fetching account information...');
         const email = await getUserEmail(tokens);
 
-        await saveTokens(tokens, email);
-        printSuccess(`Successfully authenticated as ${email}!`);
+        console.log(`\nAuthorized as: ${colors.bold}${email}${colors.reset}`);
+
+        // Fetch and select websites
+        const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+        oauth2Client.setCredentials(tokens);
+        const gClient = google.searchconsole({ version: 'v1', auth: oauth2Client });
+
+        const siteResponse = await gClient.sites.list();
+        const allSites = siteResponse.data?.siteEntry || [];
+
+        let selectedWebsites: string[] | undefined;
+        if (allSites.length > 0) {
+            console.log(`\n${colors.bold}Available websites:${colors.reset}`);
+            console.log(`  0. [All Sites] (Default)`);
+            allSites.forEach((s: any, i: number) => {
+                let displayUrl = (s.siteUrl || '').trim();
+                if (displayUrl.startsWith('sc-domain:')) displayUrl = displayUrl.substring(10);
+                else if (displayUrl.startsWith('sc-ptr:')) displayUrl = displayUrl.substring(7);
+                console.log(`  ${i + 1}. ${displayUrl}`);
+            });
+
+            const selection = await ask(`\nSelect websites to authorize (comma-separated numbers, e.g. 1,2 or leave empty for all): `);
+            if (selection && selection.trim() !== '0') {
+                const indices = selection.split(',').map(s => parseInt(s.trim()) - 1).filter(idx => idx >= 0 && idx < allSites.length);
+                if (indices.length > 0) {
+                    selectedWebsites = indices.map(idx => allSites[idx].siteUrl!);
+                }
+            }
+        }
+
+        const alias = await ask(`Enter an alias for this account (optional, default: ${email}): `) || email;
+
+        const config = await loadConfig();
+        const existingAccount = Object.values(config.accounts).find(a => a.engine === 'google' && a.alias === alias);
+        const accountId = existingAccount ? existingAccount.id : `google_${Date.now()}`;
+
+        const account: AccountConfig = {
+            ...(existingAccount || {}),
+            id: accountId,
+            engine: 'google',
+            alias,
+            websites: selectedWebsites
+        };
+        delete account.serviceAccountPath;
+
+        await updateAccount(account);
+        await saveTokensForAccount(account, tokens);
+
+        printSuccess(`Successfully added account ${alias}!`);
         printInfo('Tokens are stored securely in your system keychain.');
 
         printStep(2, 'Configure your MCP client');
-        showOAuth2ConfigSnippets(clientId, clientSecret);
+        showMcpConfigSnippet();
 
         await supportProject();
         rl.close();
@@ -243,22 +278,6 @@ export async function runLogout() {
         printError(`Logout failed: ${(error as Error).message}`);
     }
     rl.close();
-}
-
-function showOAuth2ConfigSnippets(clientId: string, clientSecret: string) {
-    console.log('\nAdd this to your MCP client configuration:\n');
-    console.log(JSON.stringify({
-        mcpServers: {
-            "search-console": {
-                command: "npx",
-                args: ["-y", "search-console-mcp"],
-                env: {
-                    GOOGLE_CLIENT_ID: clientId,
-                    GOOGLE_CLIENT_SECRET: clientSecret
-                }
-            }
-        }
-    }, null, 2));
 }
 
 async function setupServiceAccount() {
@@ -308,8 +327,58 @@ async function setupServiceAccount() {
         process.exit(1);
     }
 
+    let selectedWebsites: string[] | undefined;
+    try {
+        const { google } = await import('googleapis');
+        const auth = new google.auth.GoogleAuth({
+            keyFilename: credentialsPath,
+            scopes: ['https://www.googleapis.com/auth/webmasters.readonly']
+        });
+        const gClient = google.searchconsole({ version: 'v1', auth });
+        const siteResponse = await gClient.sites.list();
+        const allSites = siteResponse.data?.siteEntry || [];
+
+        if (allSites.length > 0) {
+            console.log(`\n${colors.bold}Available websites:${colors.reset}`);
+            console.log(`  0. [All Sites] (Default)`);
+            allSites.forEach((s: any, i: number) => {
+                let displayUrl = (s.siteUrl || '').trim();
+                if (displayUrl.startsWith('sc-domain:')) displayUrl = displayUrl.substring(10);
+                else if (displayUrl.startsWith('sc-ptr:')) displayUrl = displayUrl.substring(7);
+                console.log(`  ${i + 1}. ${displayUrl}`);
+            });
+
+            const selection = await ask(`\nSelect websites to authorize (comma-separated numbers, e.g. 1,2 or leave empty for all): `);
+            if (selection && selection.trim() !== '0') {
+                const indices = selection.split(',').map(s => parseInt(s.trim()) - 1).filter(idx => idx >= 0 && idx < allSites.length);
+                if (indices.length > 0) {
+                    selectedWebsites = indices.map(idx => allSites[idx].siteUrl!);
+                }
+            }
+        }
+    } catch (e) {
+        // Silently skip if fails to fetch
+    }
+
+    const alias = await ask(`Enter an alias for this account (optional, default: ${serviceAccountEmail}): `) || serviceAccountEmail;
+
+    const config = await loadConfig();
+    const existingAccount = Object.values(config.accounts).find(a => a.engine === 'google' && a.alias === alias);
+    const accountId = existingAccount ? existingAccount.id : `google_${Date.now()}`;
+
+    const account: AccountConfig = {
+        ...(existingAccount || {}),
+        id: accountId,
+        engine: 'google',
+        alias,
+        websites: selectedWebsites,
+        serviceAccountPath: credentialsPath
+    };
+    await updateAccount(account);
+    printSuccess(`Successfully added account ${alias}!`);
+
     printStep(4, 'Configure your MCP client');
-    showConfigSnippets(credentialsPath);
+    showMcpConfigSnippet();
     console.log('\n🎉 Setup complete! You can now use Search Console MCP.\n');
 
     await supportProject();
@@ -347,29 +416,59 @@ async function setupBing() {
         return;
     }
 
-    printSuccess('Bing API Key captured!');
+    printInfo('Verifying API key and fetching sites...');
+    let allSites: any[] = [];
+    try {
+        const tempClient = new BingClient(apiKey);
+        allSites = await tempClient.getSiteList();
+    } catch (e) {
+        printError(`Failed to verify Bing key: ${(e as Error).message}`);
+        return;
+    }
 
-    printStep(2, 'Configure your MCP client');
-    console.log('\nAdd this to your MCP client configuration (e.g., Claude Desktop config):\n');
-    console.log(JSON.stringify({
-        mcpServers: {
-            "search-console": {
-                command: "npx",
-                args: ["-y", "search-console-mcp"],
-                env: {
-                    BING_API_KEY: apiKey
-                }
+    let selectedWebsites: string[] | undefined;
+    if (allSites.length > 0) {
+        console.log(`\n${colors.bold}Available Bing sites:${colors.reset}`);
+        console.log(`  0. [All Sites] (Default)`);
+        allSites.forEach((s, i) => console.log(`  ${i + 1}. ${s.Url}`));
+
+        const selection = await ask(`\nSelect websites to authorize (comma-separated numbers, or leave empty for all): `);
+        if (selection && selection.trim() !== '0') {
+            const indices = selection.split(',').map(s => parseInt(s.trim()) - 1).filter(idx => idx >= 0 && idx < allSites.length);
+            if (indices.length > 0) {
+                selectedWebsites = indices.map(idx => allSites[idx].Url);
             }
         }
-    }, null, 2));
+    }
 
-    console.log('\n🎉 Bing setup information displayed above.');
+    const defaultAlias = selectedWebsites && selectedWebsites.length > 0 ? selectedWebsites[0] : 'Bing Account';
+    const alias = await ask(`Enter an alias for this account (optional, default: ${defaultAlias}): `) || defaultAlias;
+
+    const account: AccountConfig = {
+        id: `bing_${Date.now()}`,
+        engine: 'bing',
+        alias,
+        apiKey,
+        websites: selectedWebsites
+    };
+
+    await updateAccount(account);
+    printSuccess(`Successfully added Bing account ${alias}!`);
+
+    printStep(2, 'Configure your MCP client');
+    showMcpConfigSnippet();
+
+    console.log('\n🎉 Setup complete! You can now use Search Console MCP.\n');
+
     await supportProject();
     rl.close();
 }
 
 async function checkAndShowSites(engine: 'google' | 'bing', configStatus: any): Promise<boolean> {
-    const isConnected = engine === 'google' ? (configStatus.googleOAuth || configStatus.googleServiceAccount) : configStatus.bing;
+    const isConnected = engine === 'google'
+        ? configStatus.googleAccounts && configStatus.googleAccounts.length > 0
+        : ((configStatus.bingAccounts && configStatus.bingAccounts.length > 0) || configStatus.legacyBing);
+
     if (!isConnected) return true;
 
     const label = engine === 'google' ? 'Google Search Console' : 'Bing Webmaster Tools';
@@ -381,7 +480,7 @@ async function checkAndShowSites(engine: 'google' | 'bing', configStatus: any): 
             const response = await client.sites.list();
             const sites = response.data.siteEntry || [];
             console.log(`\n${colors.bold}Your verified Google sites:${colors.reset}`);
-            sites.slice(0, 10).forEach(s => {
+            sites.forEach(s => {
                 let displayUrl = (s.siteUrl || '').trim();
                 if (displayUrl.startsWith('sc-domain:')) {
                     displayUrl = displayUrl.substring(10);
@@ -390,13 +489,11 @@ async function checkAndShowSites(engine: 'google' | 'bing', configStatus: any): 
                 }
                 console.log(`  • ${displayUrl}`);
             });
-            if (sites.length > 10) console.log(`  ... and ${sites.length - 10} more`);
         } else {
             const client = await getBingClient();
             const sites = await client.getSiteList();
             console.log(`\n${colors.bold}Your verified Bing sites:${colors.reset}`);
-            sites.slice(0, 10).forEach(s => console.log(`  • ${s.Url}`));
-            if (sites.length > 10) console.log(`  ... and ${sites.length - 10} more`);
+            sites.forEach(s => console.log(`  • ${s.Url}`));
         }
     } catch (e) {
         console.log(`${colors.dim} (Could not fetch site list)${colors.reset}`);
@@ -429,9 +526,18 @@ async function handleBingFlow(configStatus: any) {
 }
 
 export async function main() {
+    const args = process.argv.slice(2);
+
+    // Support running `--accounts` directly from the setup file for better developer experience
+    if (args.includes('--accounts') || args.includes('accounts')) {
+        const { main: accountsMain } = await import('./accounts.js');
+        const accountsArgs = args.filter(a => a !== '--accounts' && a !== 'accounts');
+        await accountsMain(accountsArgs.length ? accountsArgs : ['list']);
+        return;
+    }
+
     printHeader();
 
-    const args = process.argv.slice(2);
     const engineFlag = args.find(a => a.startsWith('--engine='))?.split('=')[1]?.toLowerCase();
     const configStatus = await detectConfig();
 

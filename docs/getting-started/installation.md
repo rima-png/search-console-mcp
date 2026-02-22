@@ -12,13 +12,15 @@ We designed `search-console-mcp` to work instantly with your favorite AI editor.
 
 ## 🚀 One-Line Setup
 
-Run this command in your terminal. It will authenticate you with Google and generate the configuration you need.
+Run this command in your terminal. The wizard will walk you through connecting your Google and/or Bing accounts.
 
 ```bash
 npx search-console-mcp setup
 ```
 
 The tool will open your browser for secure authentication and then display the exact code snippet to copy-paste into your config.
+
+Want to add more accounts later? Just run `setup` again — it supports multiple Google and Bing accounts.
 
 ---
 
@@ -93,3 +95,24 @@ You can configure the server specifically for your workspace using the standard 
     *   Open the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`).
     *   Search for **"MCP: Add Server"**.
     *   Enter the command: `npx -y search-console-mcp`.
+
+---
+
+## Verify Your Setup
+
+After installation, confirm your accounts are connected:
+
+```bash
+npx search-console-mcp accounts list
+```
+
+This will show all connected Google and Bing accounts and which sites they can access.
+
+---
+
+## What's Next?
+
+- [Authentication](/getting-started/authentication) — Detailed auth options (OAuth, Service Account, API Key)
+- [Managing Accounts](/getting-started/accounts) — List, remove, and restrict accounts
+- [Multi-Account Support](/getting-started/multi-account) — Connect multiple accounts across engines
+- [First Queries](/getting-started/first-queries) — Start asking your AI agent questions

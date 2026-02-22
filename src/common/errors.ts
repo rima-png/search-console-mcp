@@ -11,9 +11,14 @@ export function formatError(error: unknown): {
     [key: string]: unknown;
 } {
     const message = getErrorMessage(error);
+    const anyError = error as any;
+
     return {
         content: [{ type: "text", text: `Error: ${message}` }],
-        isError: true
+        isError: true,
+        // Support structured resolution metadata for AI agents
+        ...(anyError.code && { errorCode: anyError.code }),
+        ...(anyError.resolution && { resolution: anyError.resolution })
     };
 }
 

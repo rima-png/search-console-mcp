@@ -94,7 +94,7 @@ This document outlines the planned features and improvements for this project.
   - `bing_links` - Backlink monitoring
   - `bing_sites_health` - Overall site health checks for Bing
 
-### v1.12.0 - Cross-Engine Analysis & Advanced SEO
+### v1.11.1 - Cross-Engine Analysis & Advanced SEO
 
 - **Cross-Engine Comparison Tool**: 
   - `compare_engines` - Side-by-side Google vs Bing performance analysis
@@ -109,6 +109,28 @@ This document outlines the planned features and improvements for this project.
   - `bing_cannibalization` - Detect competing pages in Bing SERPs
 - **Prompt Enhancements**: All analytical prompts updated with engine selection and date range defaults.
 
+### v1.12.0 - Multi-Account Support & CLI Accounts Management
+
+- **Multi-Account Architecture**: Manage multiple Google and Bing accounts seamlessly
+  - Dynamic account resolution based on `siteUrl` (exact match → domain match → global fallback)
+  - Encrypted unified config (`~/.search-console-mcp-config.enc`) with per-machine encryption
+  - Secure token storage in OS keychain via `@napi-rs/keyring`
+- **CLI Accounts Management** (`accounts` subcommand):
+  - `accounts list` - Display all connected accounts, sites, and engines (JSON output)
+  - `accounts remove --account=<alias>` - Remove an account by alias or ID
+  - `accounts remove --site=<url>` - Remove a site boundary from an account
+  - `accounts add-site --account=<alias> --site=<url>` - Add a site boundary to an account
+  - Supports both positional args (human) and flags (agent)
+- **Legacy Account Detection**: Automatic discovery of all legacy auth methods
+  - Encrypted legacy tokens (`~/.search-console-mcp-tokens.enc`)
+  - Unencrypted legacy OAuth tokens (`~/.search-console-mcp-tokens.json`)
+  - Service Account env vars (`GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_CLIENT_EMAIL`/`GOOGLE_PRIVATE_KEY`)
+  - Bing API Key env var (`BING_API_KEY`)
+- **Setup Wizard DX Improvements**:
+  - `--accounts` flag routes directly to accounts management
+  - Connection Status only shown when accounts exist
+  - Re-running setup for the same alias updates the account instead of creating duplicates
+
 
 ---
 
@@ -120,7 +142,6 @@ This document outlines the planned features and improvements for this project.
 
 ### v2.0.0 - Experience & Scalability
 
-- **Multi-account Support**: Manage multiple Google/Bing accounts seamlessly
 - **Export Capabilities**: Export to CSV/JSON for custom reporting
 - **Batch Processing**: Higher-order tools for automated bulk fixes
 
@@ -136,21 +157,8 @@ This document outlines the planned features and improvements for this project.
 | Screaming Frog API   | Technical SEO audits                   |
 | Perplexity/OpenAI    | AI Search Visibility tracking           |
 
-### Monitoring & Alerts
 
-- Performance threshold alerts
-- Indexing issue notifications
-- Manual actions monitoring
-- Security issues dashboard
-- Sitemap error tracking
 
-### Reporting
-
-- Scheduled reports (daily/weekly/monthly)
-- Custom report templates
-- PDF/HTML report generation
-- Slack/Discord webhook integration
-- Email digest summaries
 
 ### Developer Experience
 
@@ -158,14 +166,6 @@ This document outlines the planned features and improvements for this project.
 - Request/response caching (Redis support)
 - Rate limit handling with exponential backoff
 - Webhook support for real-time updates
-- GraphQL-style query builder
-
-### Multi-Site Management
-
-- Site groups/tags
-- Cross-site comparison
-- Portfolio dashboards
-- Aggregate analytics
 
 ---
 
