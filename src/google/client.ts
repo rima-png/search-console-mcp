@@ -169,13 +169,13 @@ export interface DeviceCodeResponse {
   interval: number;
 }
 
-export async function initiateDeviceFlow(clientId: string): Promise<DeviceCodeResponse> {
+export async function initiateDeviceFlow(clientId: string, scopes: string[] = SCOPES): Promise<DeviceCodeResponse> {
   const response = await fetch('https://oauth2.googleapis.com/device/code', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       client_id: clientId,
-      scope: SCOPES.join(' ')
+      scope: scopes.join(' ')
     })
   });
 
@@ -192,7 +192,7 @@ export async function pollForTokens(clientId: string, clientSecret: string, devi
   throw new Error("Device Flow is not supported for Search Console API.");
 }
 
-export async function startLocalFlow(clientId: string, clientSecret: string): Promise<any> {
+export async function startLocalFlow(clientId: string, clientSecret: string, scopes: string[] = SCOPES): Promise<any> {
   const { createServer } = await import('http');
   const { google } = await import('googleapis');
   const open = (await import('open')).default;
@@ -202,7 +202,7 @@ export async function startLocalFlow(clientId: string, clientSecret: string): Pr
 
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
-    scope: SCOPES,
+    scope: scopes,
     prompt: 'consent'
   });
 

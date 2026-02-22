@@ -131,6 +131,17 @@ This document outlines the planned features and improvements for this project.
   - Connection Status only shown when accounts exist
   - Re-running setup for the same alias updates the account instead of creating duplicates
 
+### v1.13.0 - GA4 & Cross-Platform Integration
+
+- **Google Analytics 4 (GA4) Support**:
+  - Comprehensive suite of analytics tools: `analytics_page_performance`, `analytics_traffic_sources`, `analytics_ecommerce`, `analytics_realtime`
+  - Auth support for OAuth and Service Accounts via Setup Wizard
+- **Cross-Platform Comparison Tools**:
+  - `page_analysis` - Correlate ranking (GSC) with behavior (GA4)
+  - `opportunity_matrix` - Master prioritization list combining GSC, Bing, and GA4 signals
+  - `traffic_health_check` - Diagnose tracking gaps
+  - `brand_analysis` - Brand share across all platforms
+  - `analytics_pagespeed_correlation` - Correlate Core Web Vitals with GA4 engagement metrics
 
 ---
 
@@ -153,7 +164,6 @@ This document outlines the planned features and improvements for this project.
 
 | API                  | Use Case                               |
 | -------------------- | -------------------------------------- |
-| Google Analytics 4   | Session/user data, conversion tracking |
 | Screaming Frog API   | Technical SEO audits                   |
 | Perplexity/OpenAI    | AI Search Visibility tracking           |
 

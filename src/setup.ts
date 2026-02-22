@@ -56,6 +56,7 @@ async function detectConfig() {
     return {
         googleAccounts: accounts.filter(a => a.engine === 'google'),
         bingAccounts: accounts.filter(a => a.engine === 'bing'),
+        ga4Accounts: accounts.filter(a => a.engine === 'ga4'),
         legacyBing: !!process.env.BING_API_KEY
     };
 }
@@ -63,12 +64,14 @@ async function detectConfig() {
 function printDetectionSummary(results: any) {
     const gCount = results.googleAccounts ? results.googleAccounts.length : 0;
     const bCount = (results.bingAccounts ? results.bingAccounts.length : 0) + (results.legacyBing ? 1 : 0);
+    const ga4Count = results.ga4Accounts ? results.ga4Accounts.length : 0;
 
-    if (gCount === 0 && bCount === 0) return;
+    if (gCount === 0 && bCount === 0 && ga4Count === 0) return;
 
     console.log(`${colors.bold}${colors.dim}🔍 Connection Status${colors.reset}\n`);
 
     printStatusLine('Google Search Console', gCount > 0);
+    printStatusLine('Google Analytics 4', ga4Count > 0);
     printStatusLine('Bing Webmaster Tools', bCount > 0);
     console.log('');
 }
@@ -547,23 +550,30 @@ export async function main() {
     } else if (engineFlag === 'google') {
         await handleGoogleFlow(configStatus);
         return;
+    } else if (engineFlag === 'ga4') {
+        await handleGA4Flow(configStatus);
+        return;
     }
 
     printDetectionSummary(configStatus);
 
-    console.log(`${colors.bold}Let’s wire this up. Google or Bing?\nPick your weapon.${colors.reset}`);
+    console.log(`${colors.bold}Let’s wire this up. Pick your integration.${colors.reset}`);
 
     console.log(`\n1. Google Search Console`);
-    console.log('2. Bing Webmaster Tools');
-    console.log('3. Exit');
+    console.log('2. Google Analytics 4');
+    console.log('3. Bing Webmaster Tools');
+    console.log('4. Exit');
 
-    const choice = await ask(`\n${colors.bold}${colors.cyan}Enter your choice (1-3): ${colors.reset}`);
+    const choice = await ask(`\n${colors.bold}${colors.cyan}Enter your choice (1-4): ${colors.reset}`);
 
     switch (choice) {
         case '1':
             await handleGoogleFlow(configStatus, true);
             break;
         case '2':
+            await handleGA4Flow(configStatus);
+            break;
+        case '3':
             await handleBingFlow(configStatus);
             break;
         default:
@@ -592,6 +602,162 @@ async function googleSubMenu(configStatus: any) {
             await main();
             break;
     }
+}
+
+async function checkAndShowGA4Sites(configStatus: any): Promise<boolean> {
+    const isConnected = configStatus.ga4Accounts && configStatus.ga4Accounts.length > 0;
+    if (!isConnected) return true;
+
+    console.log(`${colors.green}✔ Google Analytics 4 is already connected!${colors.reset}`);
+    const config = await loadConfig();
+    const accounts = Object.values(config.accounts).filter(a => a.engine === 'ga4');
+
+    console.log(`\n${colors.bold}Your configured GA4 properties:${colors.reset}`);
+    accounts.forEach(a => console.log(`  • ${a.alias} (Property ID: ${a.ga4PropertyId})`));
+
+    const reconf = await ask(`\nWould you like to reconfigure GA4? (y/N): `);
+    return reconf.toLowerCase().startsWith('y');
+}
+
+async function handleGA4Flow(configStatus: any) {
+    const shouldProceed = await checkAndShowGA4Sites(configStatus);
+    if (!shouldProceed) {
+        console.log(`\n${colors.green}✔${colors.reset} ${colors.bold}Configuration untouched. You're ready to roll!${colors.reset}`);
+        rl.close();
+        return;
+    }
+    await setupGA4();
+}
+
+async function setupGA4() {
+    printBoxHeader('Google Analytics 4 Setup');
+    console.log('Select authentication method:');
+    console.log('1. Service Account (JSON Key)');
+    console.log('2. OAuth 2.0 (Login with Google)');
+    console.log('3. Back to main menu');
+
+    const choice = await ask('\nEnter choice (1-3): ');
+
+    if (choice === '1') {
+        await setupGA4ServiceAccount();
+    } else if (choice === '2') {
+        await setupGA4OAuth();
+    } else {
+        await main();
+    }
+}
+
+async function setupGA4ServiceAccount() {
+    printStep(1, 'Locate your service account JSON key file');
+
+    // Check for existing key from GSC
+    let keyPath: string | undefined;
+    const config = await loadConfig();
+    const gscAccount = Object.values(config.accounts).find(a => a.engine === 'google' && a.serviceAccountPath);
+
+    if (gscAccount && gscAccount.serviceAccountPath) {
+        const reuse = await ask(`Found existing Service Account key for GSC (${gscAccount.alias}). Reuse it? (Y/n): `);
+        if (reuse === '' || reuse.toLowerCase().startsWith('y')) {
+            keyPath = gscAccount.serviceAccountPath;
+        }
+    }
+
+    if (!keyPath) {
+         keyPath = await ask('Enter the path to your JSON key file: ');
+         if (!keyPath) {
+             printError('No path provided.');
+             return;
+         }
+
+         const key = validateKeyFile(keyPath);
+         if (!key) return;
+         keyPath = resolve(keyPath.replace('~', homedir()));
+    }
+
+    const propertyId = await ask('Enter your GA4 Property ID (e.g. 123456789): ');
+    if (!propertyId) return;
+
+    // Validate
+    printInfo('Verifying access...');
+    try {
+        const { BetaAnalyticsDataClient } = await import('@google-analytics/data');
+        const client = new BetaAnalyticsDataClient({ keyFilename: keyPath });
+        await client.runReport({
+            property: `properties/${propertyId}`,
+            dateRanges: [{ startDate: 'today', endDate: 'today' }],
+            metrics: [{ name: 'activeUsers' }],
+            limit: 1
+        });
+        printSuccess('Connection successful!');
+
+        const alias = await ask(`Enter an alias for this account (optional, default: GA4-${propertyId}): `) || `GA4-${propertyId}`;
+        const account: AccountConfig = {
+            id: `ga4_${Date.now()}`,
+            engine: 'ga4',
+            alias,
+            serviceAccountPath: keyPath,
+            ga4PropertyId: propertyId,
+            websites: [propertyId]
+        };
+        await updateAccount(account);
+        printSuccess(`Successfully added GA4 account ${alias}!`);
+        showMcpConfigSnippet();
+
+    } catch (e) {
+        printError(`Failed to connect: ${(e as Error).message}`);
+    }
+    rl.close();
+}
+
+async function setupGA4OAuth() {
+    printStep(1, 'Browser Authorization');
+    console.log('Using Secure Desktop Flow.');
+
+    const clientId = DEFAULT_CLIENT_ID;
+    const clientSecret = DEFAULT_CLIENT_SECRET;
+    const SCOPES = ['https://www.googleapis.com/auth/analytics.readonly', 'https://www.googleapis.com/auth/userinfo.email'];
+
+    try {
+        const tokens = await startLocalFlow(clientId, clientSecret, SCOPES);
+        const email = await getUserEmail(tokens);
+         console.log(`\nAuthorized as: ${colors.bold}${email}${colors.reset}`);
+
+         const propertyId = await ask('Enter your GA4 Property ID (e.g. 123456789): ');
+         if (!propertyId) return;
+
+         // Validate
+         printInfo('Verifying access...');
+         const { BetaAnalyticsDataClient } = await import('@google-analytics/data');
+         const { google } = await import('googleapis');
+         const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+         oauth2Client.setCredentials(tokens);
+
+         const client = new BetaAnalyticsDataClient({ authClient: oauth2Client as any });
+         await client.runReport({
+             property: `properties/${propertyId}`,
+             dateRanges: [{ startDate: 'today', endDate: 'today' }],
+             metrics: [{ name: 'activeUsers' }],
+             limit: 1
+         });
+         printSuccess('Connection successful!');
+
+         const alias = await ask(`Enter an alias for this account (optional, default: ${email}-${propertyId}): `) || `${email}-${propertyId}`;
+
+         const account: AccountConfig = {
+            id: `ga4_${Date.now()}`,
+            engine: 'ga4',
+            alias,
+            ga4PropertyId: propertyId,
+            websites: [propertyId]
+        };
+        await updateAccount(account);
+        await saveTokensForAccount(account, tokens);
+        printSuccess(`Successfully added GA4 account ${alias}!`);
+        showMcpConfigSnippet();
+    } catch (e) {
+         printError(`Failed: ${(e as Error).message}`);
+    }
+    rl.close();
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);

@@ -55,3 +55,25 @@
 | Tool | Description |
 | :--- | :--- |
 | `util_star_repo` | Support the project by starring it on GitHub! 🌟 |
+
+## 📊 Google Analytics 4 (GA4)
+| Tool | Description |
+| :--- | :--- |
+| `analytics_page_performance` | Detailed page metrics (sessions, engagement, views). |
+| `analytics_traffic_sources` | Analyze sessions by Channel, Source, and Medium. |
+| `analytics_organic_landing_pages` | Focused metrics for organic traffic landing pages. |
+| `analytics_conversion_funnel` | Top converting pages and events. |
+| `analytics_user_behavior` | Device, Country, and Engagement breakdown. |
+| `analytics_audience_segments` | New vs Returning, Age, and OS analysis. |
+| `analytics_realtime` | Live active user data by page and location. |
+| `analytics_ecommerce` | Product and revenue performance. |
+| `analytics_pagespeed_correlation` | Correlate GA4 metrics with PageSpeed scores. |
+
+## 🔀 Cross-Platform Intelligence
+| Tool | Description |
+| :--- | :--- |
+| `opportunity_matrix` | **[Flagship]** Prioritize SEO tasks by combining signals from GSC, GA4, and Bing. |
+| `page_analysis` | Joint analysis of ranking (GSC) vs behavior (GA4) for pages. |
+| `traffic_health_check` | Diagnose tracking gaps by comparing GSC clicks to GA4 organic sessions. |
+| `brand_analysis` | Brand vs Non-Brand split across GSC, Bing, and GA4. |
+| `compare_engines` | Compare keyword performance between Google and Bing. |
