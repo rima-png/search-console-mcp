@@ -169,20 +169,17 @@ describe('SEO Insights Tools', () => {
 
     describe('generateRecommendations', () => {
         it('should generate a list of insights', async () => {
-            // Mock responses for all internal calls
-            mockSearchConsoleClient.searchanalytics.query
-                // 1. findLowHangingFruit
-                .mockResolvedValueOnce({
-                    data: { rows: [{ keys: ['fruit', 'p1'], position: 6, impressions: 2000, clicks: 100 }] }
-                })
-                // 2. detectCannibalization
-                .mockResolvedValueOnce({
-                    data: { rows: [] } // No cannibalization
-                })
-                // 3. findQuickWins
-                .mockResolvedValueOnce({
-                    data: { rows: [{ keys: ['page2', 'win'], position: 12, impressions: 1000, clicks: 50 }] }
-                });
+            // Mock response for the single call
+            mockSearchConsoleClient.searchanalytics.query.mockResolvedValueOnce({
+                data: {
+                    rows: [
+                        // lowHangingFruit
+                        { keys: ['fruit', 'p1'], position: 6, impressions: 2000, clicks: 100 },
+                        // quickWins (page2, win) - Note: keys are [query, page] because of generateRecommendations request
+                        { keys: ['win', 'page2'], position: 12, impressions: 1000, clicks: 50 }
+                    ]
+                }
+            });
 
             const result = await generateRecommendations('https://example.com');
 
@@ -191,25 +188,22 @@ describe('SEO Insights Tools', () => {
             expect(opportunities.length).toBeGreaterThan(0);
             expect(result[0].priority).toBeDefined();
         });
-    });
 
-    it('should report cannibalization issues', async () => {
-        mockSearchConsoleClient.searchanalytics.query
-            .mockResolvedValueOnce({ data: { rows: [] } }) // lowHangingFruit
-            .mockResolvedValueOnce({
+        it('should report cannibalization issues', async () => {
+            mockSearchConsoleClient.searchanalytics.query.mockResolvedValueOnce({
                 data: {
                     rows: [
                         { keys: ['conflict', 'p1'], position: 5, impressions: 1000, clicks: 50 },
                         { keys: ['conflict', 'p2'], position: 6, impressions: 1000, clicks: 50 }
                     ]
                 }
-            }) // detectCannibalization
-            .mockResolvedValueOnce({ data: { rows: [] } }); // findQuickWins
+            });
 
-        const result = await generateRecommendations('https://example.com');
-        const warning = result.find(i => i.type === 'warning');
-        expect(warning).toBeDefined();
-        expect(warning?.title).toContain('cannibalization issues');
+            const result = await generateRecommendations('https://example.com');
+            const warning = result.find(i => i.type === 'warning');
+            expect(warning).toBeDefined();
+            expect(warning?.title).toContain('cannibalization issues');
+        });
     });
 });
 

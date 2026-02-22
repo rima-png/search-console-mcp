@@ -1,6 +1,7 @@
 import { queryAnalytics } from './analytics.js';
 import { safeTestBatch } from '../../common/utils/regex.js';
 
+type AnalyticsRows = Awaited<ReturnType<typeof queryAnalytics>>;
 
 /**
  * Insight: A single SEO recommendation or finding
@@ -178,6 +179,29 @@ export interface BrandVsNonBrandMetrics {
     queryCount: number;
 }
 
+function aggregateQueryPageToQuery(rows: AnalyticsRows): AnalyticsRows {
+    const map = new Map<string, { clicks: number; impressions: number; position: number; ctr: number }>();
+    for (const row of rows) {
+        const query = row.keys?.[0] || '';
+        if (!map.has(query)) {
+            map.set(query, { clicks: 0, impressions: 0, position: 0, ctr: 0 });
+        }
+        const entry = map.get(query)!;
+        entry.clicks += row.clicks || 0;
+        entry.impressions += row.impressions || 0;
+        // Weighted position sum
+        entry.position += (row.position || 0) * (row.impressions || 0);
+    }
+
+    return Array.from(map.entries()).map(([query, stats]) => ({
+        keys: [query],
+        clicks: stats.clicks,
+        impressions: stats.impressions,
+        ctr: stats.impressions ? stats.clicks / stats.impressions : 0,
+        position: stats.impressions ? stats.position / stats.impressions : 0
+    }));
+}
+
 /**
  * Find "low-hanging fruit" keywords: high impressions, low CTR, and positions in striking distance.
  *
@@ -187,25 +211,32 @@ export interface BrandVsNonBrandMetrics {
  */
 export async function findLowHangingFruit(
     siteUrl: string,
-    options: { days?: number; minImpressions?: number; limit?: number } = {}
+    options: { days?: number; minImpressions?: number; limit?: number } = {},
+    rows?: AnalyticsRows
 ): Promise<LowHangingFruit[]> {
     const { days = 28, minImpressions = 100, limit = 50 } = options;
 
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() - 3); // Account for GSC data delay
-    const startDate = new Date(endDate);
-    startDate.setDate(startDate.getDate() - days);
+    let analyticsRows: AnalyticsRows;
 
-    const rows = await queryAnalytics({
-        siteUrl,
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0],
-        dimensions: ['query'],
-        limit: 5000
-    });
+    if (rows) {
+        analyticsRows = aggregateQueryPageToQuery(rows);
+    } else {
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() - 3); // Account for GSC data delay
+        const startDate = new Date(endDate);
+        startDate.setDate(startDate.getDate() - days);
+
+        analyticsRows = await queryAnalytics({
+            siteUrl,
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0],
+            dimensions: ['query'],
+            limit: 5000
+        });
+    }
 
     // Filter for low-hanging fruit: position 5-20, high impressions, low CTR
-    const candidates = rows
+    const candidates = analyticsRows
         .filter(row => {
             const position = row.position ?? 100;
             const impressions = row.impressions ?? 0;
@@ -245,22 +276,29 @@ export async function findLowHangingFruit(
  */
 export async function detectCannibalization(
     siteUrl: string,
-    options: { days?: number; minImpressions?: number; limit?: number } = {}
+    options: { days?: number; minImpressions?: number; limit?: number } = {},
+    rows?: AnalyticsRows
 ): Promise<CannibalizationIssue[]> {
     const { days = 28, minImpressions = 50, limit = 30 } = options;
 
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() - 3);
-    const startDate = new Date(endDate);
-    startDate.setDate(startDate.getDate() - days);
+    let analyticsRows: AnalyticsRows;
 
-    const rows = await queryAnalytics({
-        siteUrl,
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0],
-        dimensions: ['query', 'page'],
-        limit: 10000
-    });
+    if (rows) {
+        analyticsRows = rows;
+    } else {
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() - 3);
+        const startDate = new Date(endDate);
+        startDate.setDate(startDate.getDate() - days);
+
+        analyticsRows = await queryAnalytics({
+            siteUrl,
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0],
+            dimensions: ['query', 'page'],
+            limit: 10000
+        });
+    }
 
     // Group by query
     const queryMap = new Map<string, Array<{
@@ -271,7 +309,7 @@ export async function detectCannibalization(
         ctr: number;
     }>>();
 
-    for (const row of rows) {
+    for (const row of analyticsRows) {
         const query = row.keys?.[0] ?? '';
         const page = row.keys?.[1] ?? '';
         const impressions = row.impressions ?? 0;
@@ -566,25 +604,34 @@ export async function analyzeBrandVsNonBrand(
  */
 export async function findQuickWins(
     siteUrl: string,
-    options: { days?: number; minImpressions?: number; limit?: number } = {}
+    options: { days?: number; minImpressions?: number; limit?: number } = {},
+    rows?: AnalyticsRows,
+    keyOrder: 'queryFirst' | 'pageFirst' = 'pageFirst'
 ): Promise<QuickWin[]> {
     const { days = 28, minImpressions = 100, limit = 20 } = options;
 
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() - 3);
-    const startDate = new Date(endDate);
-    startDate.setDate(startDate.getDate() - days);
+    let analyticsRows: AnalyticsRows;
 
-    const rows = await queryAnalytics({
-        siteUrl,
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0],
-        dimensions: ['page', 'query'],
-        limit: 10000
-    });
+    if (rows) {
+        analyticsRows = rows;
+    } else {
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() - 3);
+        const startDate = new Date(endDate);
+        startDate.setDate(startDate.getDate() - days);
+
+        analyticsRows = await queryAnalytics({
+            siteUrl,
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0],
+            dimensions: ['page', 'query'],
+            limit: 10000
+        });
+        keyOrder = 'pageFirst';
+    }
 
     // Simplified logic: Just find page+query pairs in positions 11-20
-    const quickWins: QuickWin[] = rows
+    const quickWins: QuickWin[] = analyticsRows
         .map(r => {
             const impressions = r.impressions ?? 0;
             const clicks = r.clicks ?? 0;
@@ -592,9 +639,12 @@ export async function findQuickWins(
             // Estimate potential clicks if moved to top 3 (conservative 15% CTR)
             const potentialClicks = Math.round(impressions * 0.15) - clicks;
 
+            const page = keyOrder === 'pageFirst' ? (r.keys?.[0] ?? '') : (r.keys?.[1] ?? '');
+            const query = keyOrder === 'pageFirst' ? (r.keys?.[1] ?? '') : (r.keys?.[0] ?? '');
+
             return {
-                page: r.keys?.[0] ?? '',
-                query: r.keys?.[1] ?? '',
+                page,
+                query,
                 position: r.position ?? 0,
                 impressions,
                 potentialClicks: Math.max(0, potentialClicks)
@@ -621,11 +671,25 @@ export async function generateRecommendations(
     const { days = 28 } = options;
     const insights: SEOInsight[] = [];
 
-    // Run all analysis tasks in parallel
+    // Fetch superset of data once
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() - 3);
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - days);
+
+    const analyticsRows = await queryAnalytics({
+        siteUrl,
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        dimensions: ['query', 'page'],
+        limit: 10000
+    });
+
+    // Run analysis tasks using the shared data
     const [lowHangingFruit, cannibalization, quickWins] = await Promise.all([
-        findLowHangingFruit(siteUrl, { days, limit: 10 }),
-        detectCannibalization(siteUrl, { days, limit: 10 }),
-        findQuickWins(siteUrl, { days, limit: 10 })
+        findLowHangingFruit(siteUrl, { days, limit: 10 }, analyticsRows),
+        detectCannibalization(siteUrl, { days, limit: 10 }, analyticsRows),
+        findQuickWins(siteUrl, { days, limit: 10 }, analyticsRows, 'queryFirst')
     ]);
 
     // Process low-hanging fruit
