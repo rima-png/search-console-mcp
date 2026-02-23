@@ -1,4 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Mock regex utility to avoid RE2 dependency issues in test environment
+vi.mock('../src/common/utils/regex.js', () => {
+    return {
+        safeTest: (pattern: string, flags: string, text: string) => new RegExp(pattern, flags).test(text),
+        safeTestBatch: (pattern: string, flags: string, texts: string[]) => texts.map(t => new RegExp(pattern, flags).test(t))
+    };
+});
+
 import {
     getPageStats,
     getPageQueryStats,
@@ -107,9 +116,12 @@ describe('Bing Advanced Tools', () => {
         });
 
         it('should generate recommendations', async () => {
+            const d = new Date();
+            d.setDate(d.getDate() - 5);
+            const dateStr = d.toISOString().split('T')[0];
             const mockQueryStats = [
-                { Query: 'keyword 1', Clicks: 10, Impressions: 1000, AvgPosition: 12, CTR: 0.01 },
-                { Query: 'keyword 2', Clicks: 10, Impressions: 1000, AvgPosition: 2, CTR: 0.001 } // Low CTR
+                { Query: 'keyword 1', Clicks: 10, Impressions: 1000, AvgPosition: 12, CTR: 0.01, Date: dateStr },
+                { Query: 'keyword 2', Clicks: 10, Impressions: 1000, AvgPosition: 2, CTR: 0.001, Date: dateStr } // Low CTR
             ];
             (fetch as any).mockResolvedValue({
                 ok: true,
