@@ -1,6 +1,6 @@
 {
   "name": "search-console-mcp",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "mcpName": "io.github.saurabhsharma2u/search-console-mcp",
   "description": "MCP server for Google Search and Bing Search APIs",
   "type": "module",
@@ -31,6 +31,7 @@
   "license": "MIT",
   "dependencies": {
     "@adobe/structured-data-validator": "^1.6.0",
+    "@google-analytics/data": "^5.2.1",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@napi-rs/keyring": "^1.2.0",
     "cheerio": "^1.2.0",

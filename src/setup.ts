@@ -50,12 +50,63 @@ function printInfo(text: string) {
     console.log(`${colors.blue}ℹ${colors.reset} ${colors.dim}${text}${colors.reset}`);
 }
 
+async function selectGA4Property(auth: any): Promise<string | undefined> {
+    printInfo('Fetching available GA4 properties...');
+    try {
+        const admin = google.analyticsadmin('v1beta');
+        const response = await admin.accountSummaries.list({ auth });
+
+        const properties: { id: string, name: string }[] = [];
+        for (const account of response.data.accountSummaries || []) {
+            for (const prop of account.propertySummaries || []) {
+                const id = prop.property?.replace('properties/', '') || '';
+                properties.push({ id, name: prop.displayName || id });
+            }
+        }
+
+        if (properties.length === 0) {
+            printInfo('No GA4 properties found in this account.');
+            console.log(`\n${colors.yellow}💡 Hint:${colors.reset} Ensure your Google account or Service Account has been added to the GA4 Property.`);
+            console.log(`   Go to ${colors.cyan}GA4 Admin > Property Settings > Property Access Management${colors.reset} and add it.`);
+            return await ask('\nEnter your GA4 Property ID manually (e.g. 123456789): ');
+        }
+
+        if (properties.length === 1) {
+            printSuccess(`Found property: ${colors.bold}${properties[0].name}${colors.reset} (${properties[0].id})`);
+            const useIt = await ask('Use it? (Y/n): ');
+            if (useIt === '' || useIt.toLowerCase().startsWith('y')) {
+                return properties[0].id;
+            }
+        } else {
+            console.log(`\nFound ${properties.length} properties:`);
+            properties.forEach((p, i) => {
+                console.log(`${colors.cyan}[${i + 1}]${colors.reset} ${p.name} ${colors.dim}(${p.id})${colors.reset}`);
+            });
+            console.log(`${colors.cyan}[M]${colors.reset} Enter manually`);
+
+            const choice = await ask(`\nSelect property (1-${properties.length}) or M: `);
+            if (choice.toLowerCase() === 'm') {
+                return await ask('Enter your GA4 Property ID manually: ');
+            }
+            const index = parseInt(choice) - 1;
+            if (index >= 0 && index < properties.length) {
+                return properties[index].id;
+            }
+        }
+    } catch (e) {
+        printInfo(`Note: Could not fetch property list automatically: ${(e as Error).message}`);
+        return await ask('Enter your GA4 Property ID manually (e.g. 123456789): ');
+    }
+    return undefined;
+}
+
 async function detectConfig() {
     const config = await loadConfig();
     const accounts = Object.values(config.accounts);
     return {
         googleAccounts: accounts.filter(a => a.engine === 'google'),
         bingAccounts: accounts.filter(a => a.engine === 'bing'),
+        ga4Accounts: accounts.filter(a => a.engine === 'ga4'),
         legacyBing: !!process.env.BING_API_KEY
     };
 }
@@ -63,12 +114,14 @@ async function detectConfig() {
 function printDetectionSummary(results: any) {
     const gCount = results.googleAccounts ? results.googleAccounts.length : 0;
     const bCount = (results.bingAccounts ? results.bingAccounts.length : 0) + (results.legacyBing ? 1 : 0);
+    const ga4Count = results.ga4Accounts ? results.ga4Accounts.length : 0;
 
-    if (gCount === 0 && bCount === 0) return;
+    if (gCount === 0 && bCount === 0 && ga4Count === 0) return;
 
     console.log(`${colors.bold}${colors.dim}🔍 Connection Status${colors.reset}\n`);
 
     printStatusLine('Google Search Console', gCount > 0);
+    printStatusLine('Google Analytics 4', ga4Count > 0);
     printStatusLine('Bing Webmaster Tools', bCount > 0);
     console.log('');
 }
@@ -252,7 +305,6 @@ export async function login() {
         showMcpConfigSnippet();
 
         await supportProject();
-        rl.close();
     } catch (error) {
         printError(`Authentication failed: ${(error as Error).message}`);
         console.log('\nTip: Ensure you are using a "Desktop Application" Client ID type in the Cloud Console.');
@@ -277,7 +329,6 @@ export async function runLogout() {
     } catch (error) {
         printError(`Logout failed: ${(error as Error).message}`);
     }
-    rl.close();
 }
 
 async function setupServiceAccount() {
@@ -382,7 +433,6 @@ async function setupServiceAccount() {
     console.log('\n🎉 Setup complete! You can now use Search Console MCP.\n');
 
     await supportProject();
-    rl.close();
 }
 
 async function supportProject() {
@@ -461,7 +511,6 @@ async function setupBing() {
     console.log('\n🎉 Setup complete! You can now use Search Console MCP.\n');
 
     await supportProject();
-    rl.close();
 }
 
 async function checkAndShowSites(engine: 'google' | 'bing', configStatus: any): Promise<boolean> {
@@ -508,7 +557,6 @@ async function handleGoogleFlow(configStatus: any, forceSubMenu = false) {
         const shouldProceed = await checkAndShowSites('google', configStatus);
         if (!shouldProceed) {
             console.log(`\n${colors.green}✔${colors.reset} ${colors.bold}Configuration untouched. You're ready to roll!${colors.reset}`);
-            rl.close();
             return;
         }
     }
@@ -519,7 +567,6 @@ async function handleBingFlow(configStatus: any) {
     const shouldProceed = await checkAndShowSites('bing', configStatus);
     if (!shouldProceed) {
         console.log(`\n${colors.green}✔${colors.reset} ${colors.bold}Configuration untouched. You're ready to roll!${colors.reset}`);
-        rl.close();
         return;
     }
     await setupBing();
@@ -536,8 +583,6 @@ export async function main() {
         return;
     }
 
-    printHeader();
-
     const engineFlag = args.find(a => a.startsWith('--engine='))?.split('=')[1]?.toLowerCase();
     const configStatus = await detectConfig();
 
@@ -547,29 +592,40 @@ export async function main() {
     } else if (engineFlag === 'google') {
         await handleGoogleFlow(configStatus);
         return;
+    } else if (engineFlag === 'ga4') {
+        await handleGA4Flow(configStatus);
+        return;
     }
 
-    printDetectionSummary(configStatus);
+    while (true) {
+        printHeader();
+        printDetectionSummary(configStatus);
 
-    console.log(`${colors.bold}Let’s wire this up. Google or Bing?\nPick your weapon.${colors.reset}`);
+        console.log(`${colors.bold}Let’s wire this up. Pick your integration.${colors.reset}`);
 
-    console.log(`\n1. Google Search Console`);
-    console.log('2. Bing Webmaster Tools');
-    console.log('3. Exit');
+        console.log(`\n1. Google Search Console`);
+        console.log('2. Google Analytics 4');
+        console.log('3. Bing Webmaster Tools');
+        console.log('4. Exit');
 
-    const choice = await ask(`\n${colors.bold}${colors.cyan}Enter your choice (1-3): ${colors.reset}`);
+        const choice = await ask(`\n${colors.bold}${colors.cyan}Enter your choice (1-4): ${colors.reset}`);
 
-    switch (choice) {
-        case '1':
-            await handleGoogleFlow(configStatus, true);
-            break;
-        case '2':
-            await handleBingFlow(configStatus);
-            break;
-        default:
-            console.log(`\n${colors.dim}See you on the flip side!${colors.reset}`);
-            rl.close();
-            break;
+        switch (choice) {
+            case '1':
+                await handleGoogleFlow(configStatus, true);
+                break;
+            case '2':
+                await handleGA4Flow(configStatus);
+                break;
+            case '3':
+                await handleBingFlow(configStatus);
+                break;
+            case '4':
+            default:
+                console.log(`\n${colors.dim}See you on the flip side!${colors.reset}`);
+                rl.close();
+                return;
+        }
     }
 }
 
@@ -589,8 +645,179 @@ async function googleSubMenu(configStatus: any) {
             await setupServiceAccount();
             break;
         default:
-            await main();
-            break;
+            return;
+    }
+}
+
+async function checkAndShowGA4Sites(configStatus: any): Promise<boolean> {
+    const isConnected = configStatus.ga4Accounts && configStatus.ga4Accounts.length > 0;
+    if (!isConnected) return true;
+
+    console.log(`${colors.green}✔ Google Analytics 4 is already connected!${colors.reset}`);
+    const config = await loadConfig();
+    const accounts = Object.values(config.accounts).filter(a => a.engine === 'ga4');
+
+    console.log(`\n${colors.bold}Your configured GA4 properties:${colors.reset}`);
+    accounts.forEach(a => console.log(`  • ${a.alias} (Property ID: ${a.ga4PropertyId})`));
+
+    const reconf = await ask(`\nWould you like to reconfigure GA4? (y/N): `);
+    return reconf.toLowerCase().startsWith('y');
+}
+
+async function handleGA4Flow(configStatus: any) {
+    const shouldProceed = await checkAndShowGA4Sites(configStatus);
+    if (!shouldProceed) {
+        console.log(`\n${colors.green}✔${colors.reset} ${colors.bold}Configuration untouched. You're ready to roll!${colors.reset}`);
+        return;
+    }
+    await setupGA4();
+}
+
+async function setupGA4() {
+    printBoxHeader('Google Analytics 4 Setup');
+    console.log('Select authentication method:');
+    console.log('1. Service Account (JSON Key)');
+    // console.log('2. OAuth 2.0 (Login with Google)');
+    console.log('2. Back to main menu');
+
+    const choice = await ask('\nEnter choice (1-2): ');
+
+    if (choice === '1') {
+        await setupGA4ServiceAccount();
+    } else {
+        return;
+    }
+}
+
+async function setupGA4ServiceAccount() {
+    printStep(1, 'Locate your service account JSON key file');
+
+    // Check for existing key from GSC
+    let keyPath: string | undefined;
+    const config = await loadConfig();
+    const gscAccount = Object.values(config.accounts).find(a => a.engine === 'google' && a.serviceAccountPath);
+
+    if (gscAccount && gscAccount.serviceAccountPath) {
+        const reuse = await ask(`Found existing Service Account key for GSC (${gscAccount.alias}). Reuse it? (Y/n): `);
+        if (reuse === '' || reuse.toLowerCase().startsWith('y')) {
+            keyPath = gscAccount.serviceAccountPath;
+        }
+    }
+
+    if (!keyPath) {
+        keyPath = await ask('Enter the path to your JSON key file: ');
+        if (!keyPath) {
+            printError('No path provided.');
+            return;
+        }
+    }
+
+    const key = validateKeyFile(keyPath);
+    if (!key) return;
+    const serviceAccountEmail = key.client_email;
+    keyPath = resolve(keyPath.replace('~', homedir()));
+
+    printStep(2, 'Add service account to Google Analytics 4');
+    console.log('You need to add this email as a user in your GA4 Property:\n');
+    console.log(`  📧 ${colors.bold}${serviceAccountEmail}${colors.reset}\n`);
+    console.log('Steps:');
+    console.log('  1. Go to https://analytics.google.com/');
+    console.log('  2. Click "Admin" (cog icon, bottom left)');
+    console.log('  3. Select your Property');
+    console.log('  4. Click "Property Settings" > "Property Access Management"');
+    console.log(`  5. Click "+" > "Add users" and enter: ${serviceAccountEmail}`);
+    console.log('  6. Set role to "Viewer" (minimum) and click "Add"\n');
+
+    await ask('Press Enter when you\'ve added the service account to GA4...');
+
+    const auth = new google.auth.GoogleAuth({
+        keyFile: keyPath,
+        scopes: ['https://www.googleapis.com/auth/analytics.readonly']
+    });
+
+    const propertyId = await selectGA4Property(auth);
+    if (!propertyId) return;
+
+    // Validate
+    printInfo('Verifying access...');
+    try {
+        const { BetaAnalyticsDataClient } = await import('@google-analytics/data');
+        const client = new BetaAnalyticsDataClient({ keyFilename: keyPath });
+        await client.runReport({
+            property: `properties/${propertyId}`,
+            dateRanges: [{ startDate: 'today', endDate: 'today' }],
+            metrics: [{ name: 'activeUsers' }],
+            limit: 1
+        });
+        printSuccess('Connection successful!');
+
+        const alias = await ask(`Enter an alias for this account (optional, default: GA4-${propertyId}): `) || `GA4-${propertyId}`;
+        const account: AccountConfig = {
+            id: `ga4_${Date.now()}`,
+            engine: 'ga4',
+            alias,
+            serviceAccountPath: keyPath,
+            ga4PropertyId: propertyId,
+            websites: [propertyId]
+        };
+        await updateAccount(account);
+        printSuccess(`Successfully added GA4 account ${alias}!`);
+        showMcpConfigSnippet();
+
+    } catch (e) {
+        printError(`Failed to connect: ${(e as Error).message}`);
+    }
+}
+
+async function setupGA4OAuth() {
+    printStep(1, 'Browser Authorization');
+    console.log('Using Secure Desktop Flow.');
+    printInfo('Note: GA4 requires different Google permissions than Search Console.');
+    printInfo('If you use the same email, it will appear as a separate account in the CLI.');
+
+    const clientId = DEFAULT_CLIENT_ID;
+    const clientSecret = DEFAULT_CLIENT_SECRET;
+    const SCOPES = ['https://www.googleapis.com/auth/analytics.readonly', 'https://www.googleapis.com/auth/userinfo.email'];
+
+    try {
+        const tokens = await startLocalFlow(clientId, clientSecret, SCOPES);
+        const email = await getUserEmail(tokens);
+        console.log(`\nAuthorized as: ${colors.bold}${email}${colors.reset}`);
+
+        const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+        oauth2Client.setCredentials(tokens);
+
+        const propertyId = await selectGA4Property(oauth2Client);
+        if (!propertyId) return;
+
+        // Validate
+        printInfo('Verifying access...');
+        const { BetaAnalyticsDataClient } = await import('@google-analytics/data');
+
+        const client = new BetaAnalyticsDataClient({ authClient: oauth2Client as any });
+        await client.runReport({
+            property: `properties/${propertyId}`,
+            dateRanges: [{ startDate: 'today', endDate: 'today' }],
+            metrics: [{ name: 'activeUsers' }],
+            limit: 1
+        });
+        printSuccess('Connection successful!');
+
+        const alias = await ask(`Enter an alias for this account (optional, default: ${email}-${propertyId}): `) || `${email}-${propertyId}`;
+
+        const account: AccountConfig = {
+            id: `ga4_${Date.now()}`,
+            engine: 'ga4',
+            alias,
+            ga4PropertyId: propertyId,
+            websites: [propertyId]
+        };
+        await updateAccount(account);
+        await saveTokensForAccount(account, tokens);
+        printSuccess(`Successfully added GA4 account ${alias}!`);
+        showMcpConfigSnippet();
+    } catch (e) {
+        printError(`Failed: ${(e as Error).message}`);
     }
 }
 

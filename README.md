@@ -124,6 +124,18 @@ To access Bing data, you simply need an API Key.
 
 ---
 
+## 📊 Google Analytics 4 (GA4)
+
+Connect your GA4 properties to correlate ranking data with user behavior.
+
+### Setup:
+1.  **Run Setup**: `npx search-console-mcp setup --engine=ga4`
+2.  **Auth Method**: Choose **Service Account** (JSON Key). This is the recommended method for server-side integrations.
+    *   **Service Account**: You must add the service account email as a user in **GA4 Admin > Property Settings > Property Access Management**.
+3.  **Property Selection**: The tool will automatically fetch all available GA4 properties for your account and let you select one from a list. You can also enter a Property ID manually if needed.
+
+---
+
 ## 👥 Multi-Account Management
 
 Manage multiple Google and Bing accounts from the CLI:
@@ -216,6 +228,29 @@ These are low-level tools designed to be used by other AI agents to build comple
 | `bing_analytics_detect_anomalies` | Detect daily spikes or drops in Bing traffic. |
 | `bing_analytics_time_series` | Advanced time series analysis for Bing. |
 | `bing_sitemaps_list` / `bing_sitemaps_submit` | Manage sitemaps in Bing. |
+
+### Google Analytics 4 (GA4)
+| Tool | Description |
+|------|-------------|
+| `analytics_page_performance` | Detailed page metrics (sessions, engagement, views). |
+| `analytics_traffic_sources` | Analyze sessions by Channel, Source, and Medium. |
+| `analytics_organic_landing_pages` | Focused metrics for organic traffic landing pages. |
+| `analytics_content_performance` | Analyze content performance by Content Group in GA4. |
+| `analytics_conversion_funnel` | Top converting pages and events. |
+| `analytics_user_behavior` | Device, Country, and Engagement breakdown. |
+| `analytics_audience_segments` | New vs Returning, Age, and OS analysis. |
+| `analytics_realtime` | Live active user data by page and location. |
+| `analytics_ecommerce` | Product and revenue performance. |
+| `analytics_pagespeed_correlation` | Correlate GA4 metrics with PageSpeed scores. |
+
+### Cross-Platform Intelligence
+| Tool | Description |
+|------|-------------|
+| `opportunity_matrix` | **[Flagship]** Prioritize SEO tasks by combining signals from GSC, GA4, and Bing. |
+| `page_analysis` | Joint analysis of ranking (GSC) vs behavior (GA4) for pages. |
+| `traffic_health_check` | Diagnose tracking gaps by comparing GSC clicks to GA4 organic sessions. |
+| `brand_analysis` | Brand vs Non-Brand split across GSC, Bing, and GA4. |
+| `compare_engines` | Compare keyword performance between Google and Bing. |
 
 
 

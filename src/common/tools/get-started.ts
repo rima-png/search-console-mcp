@@ -9,11 +9,12 @@ export const getStartedToolSchema = {};
 
 export async function getStartedHandler() {
     try {
-        const { isGoogleEnabled, isBingEnabled } = getEnabledPlatforms();
+        const { isGoogleEnabled, isBingEnabled, isGA4Enabled } = getEnabledPlatforms();
 
         const activePlatforms: Record<string, string> = {};
         if (isGoogleEnabled) activePlatforms["google"] = "Google Search Console (Search Analytics, Sitemaps, Inspection)";
         if (isBingEnabled) activePlatforms["bing"] = "Bing Webmaster Tools (Search Performance, Sitemaps, Crawl Issues)";
+        if (isGA4Enabled) activePlatforms["ga4"] = "Google Analytics 4 (Traffic Sources, Realtime, Page Performance, Behavior)";
 
         const intentGroups = [
             {
@@ -124,6 +125,20 @@ export async function getStartedHandler() {
                             prefer_over: "bing_analytics_page_query",
                             next_tool: null
                         }
+                    ] : []),
+                    ...(isGA4Enabled ? [
+                        {
+                            name: "analytics_page_performance",
+                            purpose: "Get detailed GA4 metrics (sessions, engagement) for a specific path.",
+                            prefer_over: "analytics_query",
+                            next_tool: "analytics_pagespeed_correlation"
+                        },
+                        {
+                            name: "analytics_pagespeed_correlation",
+                            purpose: "Correlate GA4 engagement with PageSpeed scores.",
+                            prefer_over: null,
+                            next_tool: null
+                        }
                     ] : [])
                 ]
             },
@@ -170,6 +185,34 @@ export async function getStartedHandler() {
                             prefer_over: "analytics_compare_periods",
                             next_tool: "analytics_top_queries"
                         }
+                    ] : []),
+                    ...(isGoogleEnabled && isGA4Enabled ? [
+                        {
+                            name: "page_analysis",
+                            purpose: "Compare GSC search data with GA4 on-site behavior data.",
+                            prefer_over: null,
+                            next_tool: "opportunity_matrix"
+                        },
+                        {
+                            name: "traffic_health_check",
+                            purpose: "Diagnose tracking issues by comparing GSC clicks vs GA4 organic sessions.",
+                            prefer_over: null,
+                            next_tool: null
+                        }
+                    ] : []),
+                    ...(isGoogleEnabled && isBingEnabled && isGA4Enabled ? [
+                        {
+                            name: "opportunity_matrix",
+                            purpose: "Prioritize SEO tasks by combining signals from GSC, GA4, and Bing.",
+                            prefer_over: null,
+                            next_tool: null
+                        },
+                        {
+                            name: "brand_analysis",
+                            purpose: "Analyze Brand vs Non-Brand performance across all 3 platforms.",
+                            prefer_over: null,
+                            next_tool: null
+                        }
                     ] : [])
                 ]
             },
@@ -203,6 +246,20 @@ export async function getStartedHandler() {
                             prefer_over: "bing_analytics_query",
                             next_tool: null
                         }
+                    ] : []),
+                    ...(isGA4Enabled ? [
+                        {
+                            name: "analytics_realtime",
+                            purpose: "Get realtime active users from GA4.",
+                            prefer_over: null,
+                            next_tool: null
+                        },
+                        {
+                            name: "analytics_user_behavior",
+                            purpose: "Get breakdown by device, country, and engagement from GA4.",
+                            prefer_over: null,
+                            next_tool: null
+                        }
                     ] : [])
                 ]
             },
@@ -231,6 +288,7 @@ export async function getStartedHandler() {
             "traffic_drop_investigation": "investigate_traffic_drop prompt or analytics_anomalies tool",
             "finding_content_opportunities": "find_quick_wins prompt or seo_low_hanging_fruit tool",
             "full_site_audit": "full_site_audit prompt or sites_health_check tool",
+            "ga4_performance_audit": "ga4_traffic_audit prompt",
             "executive_summary": "executive_summary prompt"
         };
 
@@ -240,6 +298,7 @@ export async function getStartedHandler() {
                 trigger: "User asks why traffic dropped",
                 steps: [
                     "investigate_traffic_drop (Prompt) - Orchestrates anomaly detection and drop attribution",
+                    "traffic_health_check - (GA4+GSC) Cross-check GSC clicks vs GA4 sessions",
                     "analytics_compare_periods - Validates the drop with period-over-period data",
                     "inspection_inspect - Checks if affected pages are indexed correctly"
                 ]
@@ -249,6 +308,7 @@ export async function getStartedHandler() {
                 trigger: "User asks for easy growth opportunities",
                 steps: [
                     "find_quick_wins (Prompt) - Finds striking distance keywords",
+                    "page_analysis - (GA4+GSC) Find pages with high GSC impressions but low engagement",
                     "pagespeed_analyze - Checks if speed is holding these pages back",
                     "inspection_inspect - Verifies technical health"
                 ]
@@ -258,8 +318,18 @@ export async function getStartedHandler() {
                 trigger: "User wants to improve content performance",
                 steps: [
                     "content_opportunity_report (Prompt) - Identifies low CTR and cannibalization issues",
+                    "analytics_content_performance - Check which content groups are most engaging",
                     "seo_cannibalization - Deep dive into competing pages",
                     "seo_low_ctr_opportunities - Finds title/meta optimization targets"
+                ]
+            },
+            {
+                name: "GA4 Traffic Deep Dive",
+                trigger: "User wants to understand GA4 metrics",
+                steps: [
+                    "ga4_traffic_audit (Prompt) - Full acquisition and conversion audit",
+                    "analytics_realtime - Check currently active users",
+                    "analytics_user_behavior - Break down users by device and country"
                 ]
             }
         ];

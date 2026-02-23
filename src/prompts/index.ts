@@ -54,7 +54,7 @@ export function registerPrompts(server: McpServer) {
             period: z.string().optional().describe("Period to analyze (default: 'last 28 days')")
         },
         ({ site_url, period = "last 28 days" }) => {
-            const { isGoogleEnabled, isBingEnabled } = getEnabledPlatforms();
+            const { isGoogleEnabled, isBingEnabled, isGA4Enabled } = getEnabledPlatforms();
             const steps = new StepBuilder();
 
             if (isGoogleEnabled) {
@@ -67,6 +67,13 @@ export function registerPrompts(server: McpServer) {
             if (isBingEnabled) {
                 steps.add("Run 'bing_analytics_detect_anomalies' to check for traffic anomalies on Bing.");
                 steps.add("Run 'bing_analytics_drop_attribution' to identify the cause of any Bing traffic drop.");
+            }
+            if (isGA4Enabled) {
+                steps.add("Run 'analytics_realtime' to see if current traffic is flowing.");
+                steps.add("Run 'analytics_user_behavior' to check if the drop is specific to a country or device category.");
+                if (isGoogleEnabled) {
+                    steps.add("Run 'traffic_health_check' to compare GSC clicks vs GA4 organic sessions (diagnose tracking issues).");
+                }
             }
             steps.synthesize("Synthesize findings into: when it started, what pages/devices are affected, likely cause, and 3 recommended actions.");
 
@@ -93,7 +100,7 @@ export function registerPrompts(server: McpServer) {
             date_range: z.string().optional().describe("Date range to analyze (default: 'last 90 days')")
         },
         ({ site_url, min_impressions = 1000, date_range = "last 90 days" }) => {
-            const { isGoogleEnabled, isBingEnabled } = getEnabledPlatforms();
+            const { isGoogleEnabled, isBingEnabled, isGA4Enabled } = getEnabledPlatforms();
             const steps = new StepBuilder();
 
             if (isGoogleEnabled) {
@@ -104,6 +111,10 @@ export function registerPrompts(server: McpServer) {
             if (isBingEnabled) {
                 steps.add(`Run 'bing_striking_distance' to find Bing keywords in positions 8-15.`);
                 steps.add(`Run 'bing_opportunity_finder' to find high-potential keywords on Bing.`);
+            }
+            if (isGA4Enabled && isGoogleEnabled) {
+                steps.add("Run 'page_analysis' to find pages with good GSC potential but poor GA4 engagement.");
+                steps.add("Run 'analytics_pagespeed_correlation' to see if speed improvements would boost engagement on top pages.");
             }
             steps.synthesize("Output a ranked action list: page URL, current position, impressions, what to fix, expected impact.");
 
@@ -130,7 +141,7 @@ export function registerPrompts(server: McpServer) {
             date_range: z.string().optional().describe("Date range to analyze (default: 'last 90 days')")
         },
         ({ site_url, brand_terms, date_range = "last 90 days" }) => {
-            const { isGoogleEnabled, isBingEnabled } = getEnabledPlatforms();
+            const { isGoogleEnabled, isBingEnabled, isGA4Enabled } = getEnabledPlatforms();
             const steps = new StepBuilder();
 
             if (isGoogleEnabled) {
@@ -148,6 +159,14 @@ export function registerPrompts(server: McpServer) {
                 steps.add("Run 'bing_sites_health' to get overall Bing site health status.");
                 steps.add("Run 'bing_crawl_issues' to identify crawl problems on Bing.");
                 steps.add("Run 'bing_seo_recommendations' to get Bing-specific optimization suggestions.");
+            }
+            if (isGA4Enabled) {
+                steps.add("Run 'analytics_user_behavior' to get an overview of audience health.");
+                steps.add("Run 'analytics_traffic_sources' to check the mix of traffic (Organic vs Direct/Social).");
+                steps.add("Run 'analytics_conversion_funnel' to flag any drops in user conversion.");
+                if (isGoogleEnabled && isBingEnabled) {
+                    steps.add("Run 'opportunity_matrix' to get a prioritized list of tasks across all platforms.");
+                }
             }
             steps.synthesize("Synthesize into an executive summary: overall health score, top 3 wins, top 3 risks, recommended priority order.");
 
@@ -173,7 +192,7 @@ export function registerPrompts(server: McpServer) {
             date_range: z.string().optional().describe("Date range to analyze (default: 'last 28 days')")
         },
         ({ page_url, date_range = "last 28 days" }) => {
-            const { isGoogleEnabled, isBingEnabled } = getEnabledPlatforms();
+            const { isGoogleEnabled, isBingEnabled, isGA4Enabled } = getEnabledPlatforms();
             const steps = new StepBuilder();
 
             if (isGoogleEnabled) {
@@ -186,6 +205,9 @@ export function registerPrompts(server: McpServer) {
             if (isBingEnabled) {
                 steps.add("Run 'bing_url_info' to get Bing indexing and crawl information for this page.");
                 steps.add("Run 'bing_analytics_page_query' to get Bing search performance data for this page.");
+            }
+            if (isGA4Enabled) {
+                steps.add("Run 'analytics_page_performance' for this specific page path to see engagement and session metrics.");
             }
             steps.synthesize("Is this page healthy? What is its biggest limiting factor right now (rankings, CTR, speed, or indexing)?");
 
@@ -211,14 +233,18 @@ export function registerPrompts(server: McpServer) {
             date_range: z.string().optional().describe("Date range (default: 'last 28 days')")
         },
         ({ site_url, date_range = "last 28 days" }) => {
-            const { isGoogleEnabled, isBingEnabled } = getEnabledPlatforms();
+            const { isGoogleEnabled, isBingEnabled, isGA4Enabled } = getEnabledPlatforms();
             const steps = new StepBuilder();
 
             if (isGoogleEnabled && isBingEnabled) {
                 steps.add("Run 'compare_engines' with dimension='query' to get the full side-by-side ranking table.");
                 steps.add("Identify the top 10 queries where Bing rank is significantly better than Google rank.");
                 steps.add("Identify the top 10 queries where Google rank is significantly better than Bing rank.");
-                steps.add("Run brand analysis across both platforms (using 'seo_brand_vs_nonbrand' for Google).");
+                if (isGA4Enabled) {
+                    steps.add("Run 'brand_analysis' with brand terms to compare brand strength across GSC, Bing, and GA4 Organic.");
+                } else {
+                    steps.add("Run brand analysis across both platforms (using 'seo_brand_vs_nonbrand' for Google).");
+                }
                 steps.synthesize("Which platform needs more attention, what the cross-platform opportunity is worth, and 3 specific actions.");
             } else {
                 steps.synthesize("Note: This workflow requires both Google and Bing to be enabled. Please configure both platforms and try again.");
@@ -246,7 +272,7 @@ export function registerPrompts(server: McpServer) {
             date_range: z.string().optional().describe("Date range (default: 'last 90 days')")
         },
         ({ site_url, date_range = "last 90 days" }) => {
-            const { isGoogleEnabled, isBingEnabled } = getEnabledPlatforms();
+            const { isGoogleEnabled, isBingEnabled, isGA4Enabled } = getEnabledPlatforms();
             const steps = new StepBuilder();
 
             if (isGoogleEnabled) {
@@ -256,6 +282,9 @@ export function registerPrompts(server: McpServer) {
             }
             if (isBingEnabled) {
                 steps.add("Run 'bing_low_ctr_opportunities' to find Bing queries with good rankings but poor click-through rates.");
+            }
+            if (isGA4Enabled) {
+                steps.add("Run 'analytics_content_performance' to identify content groups that are over or under-performing in engagement.");
             }
             steps.synthesize('Synthesize into three buckets: "optimize existing" (low CTR fixes), "consolidate" (cannibalization fixes), "revive or create" (lost queries + content gaps).');
 
@@ -283,7 +312,7 @@ export function registerPrompts(server: McpServer) {
             compare_to: z.string().optional().describe("Comparison period (default: 'previous period')")
         },
         ({ site_url, brand_terms, date_range = "last 28 days", compare_to = "previous period" }) => {
-            const { isGoogleEnabled, isBingEnabled } = getEnabledPlatforms();
+            const { isGoogleEnabled, isBingEnabled, isGA4Enabled } = getEnabledPlatforms();
             const steps = new StepBuilder();
 
             if (isGoogleEnabled) {
@@ -298,6 +327,10 @@ export function registerPrompts(server: McpServer) {
                 steps.add(`Run 'bing_analytics_compare_periods' (current ${date_range} vs ${compare_to}) for Bing trend data.`);
                 steps.add("Run 'bing_analytics_detect_anomalies' to check for Bing traffic anomalies.");
             }
+            if (isGA4Enabled) {
+                steps.add("Run 'analytics_user_behavior' to check engagement metrics (engagement rate, sessions per user) compared to baseline.");
+                steps.add("Run 'analytics_traffic_sources' to flag any significant shifts in acquisition channels.");
+            }
             steps.synthesize("Synthesize into: one-paragraph performance narrative, three bullet wins, three bullet risks, five recommended actions ranked by impact, one key metric to watch next month.");
 
             return {
@@ -306,6 +339,35 @@ export function registerPrompts(server: McpServer) {
                     content: {
                         type: "text",
                         text: `Generate an executive SEO summary for ${site_url || "the active site"} (${date_range}, compared to ${compare_to}).\n\nWorkflow:\n${steps}`
+                    }
+                }]
+            };
+        }
+    );
+
+    // ────────────────────────────────────────────────────────────────
+    // 8. GA4 Acquisition & Conversion
+    // ────────────────────────────────────────────────────────────────
+    server.prompt(
+        "ga4_traffic_audit",
+        {
+            property_id: z.string().describe("GA4 Property ID"),
+            date_range: z.string().optional().describe("Date range (default: 'last 28 days')")
+        },
+        ({ property_id, date_range = "last 28 days" }) => {
+            const steps = new StepBuilder();
+            steps.add("Run 'analytics_traffic_sources' to identify top acquisition channels.");
+            steps.add("Run 'analytics_organic_landing_pages' to see which pages are driving organic traffic.");
+            steps.add("Run 'analytics_conversion_funnel' to see if top traffic sources are converting.");
+            steps.add("Run 'analytics_user_behavior' to check engagement quality across devices.");
+            steps.synthesize("Which traffic channel is most valuable, where is the highest drop-off in the funnel, and 3 recommendations to improve ROI.");
+
+            return {
+                messages: [{
+                    role: "user",
+                    content: {
+                        type: "text",
+                        text: `Perform a GA4 traffic and acquisition audit for property ${property_id} (${date_range}).\n\nWorkflow:\n${steps}`
                     }
                 }]
             };

@@ -26,6 +26,12 @@ import * as bingSeoInsights from "./bing/tools/seo-insights.js";
 import * as indexNow from "./bing/tools/index-now.js";
 import * as bingAdvancedAnalytics from "./bing/tools/advanced-analytics.js";
 import * as compareEnginesTool from "./common/tools/compare-engines/index.js";
+import * as ga4Analytics from "./ga4/tools/analytics.js";
+import * as ga4Realtime from "./ga4/tools/realtime.js";
+import * as ga4Behavior from "./ga4/tools/behavior.js";
+import * as ga4PageSpeed from "./ga4/tools/pagespeed.js";
+import * as ga4GscComparator from "./common/tools/compare-engines/ga4-gsc-comparator.js";
+import * as ga4GscBingComparator from "./common/tools/compare-engines/ga4-gsc-bing-comparator.js";
 import { loadConfig, removeAccount, updateAccount, AccountConfig } from './common/auth/config.js';
 import { resolveAccount } from './common/auth/resolver.js';
 import { getSearchConsoleClient } from './google/client.js';
@@ -1612,6 +1618,328 @@ server.tool(
     }
   }
 );
+// --- GA4 Tools ---
+
+server.tool(
+  "analytics_page_performance",
+  "Get detailed page performance metrics from GA4 (sessions, views, engagement)",
+  {
+    propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
+    startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().describe("End date (YYYY-MM-DD)"),
+    pagePath: z.string().optional().describe("Filter by specific page path"),
+    limit: z.number().optional().describe("Max rows (default 50)")
+  },
+  async ({ propertyId, accountId, startDate, endDate, pagePath, limit }) => {
+    try {
+      const result = await ga4Analytics.getPagePerformance(propertyId, startDate, endDate, pagePath, limit, accountId);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "analytics_traffic_sources",
+  "Analyze traffic sources (Channel, Source, Medium) in GA4",
+  {
+    propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
+    startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().describe("End date (YYYY-MM-DD)"),
+    channelGroup: z.string().optional().describe("Filter by Channel Group (e.g. 'Organic Search')"),
+    limit: z.number().optional().describe("Max rows (default 50)")
+  },
+  async ({ propertyId, accountId, startDate, endDate, channelGroup, limit }) => {
+    try {
+      const result = await ga4Analytics.getTrafficSources(propertyId, startDate, endDate, channelGroup, limit, accountId);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "analytics_organic_landing_pages",
+  "Get performance of organic landing pages in GA4 (matches GSC data)",
+  {
+    propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
+    startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().describe("End date (YYYY-MM-DD)"),
+    limit: z.number().optional().describe("Max rows (default 50)")
+  },
+  async ({ propertyId, accountId, startDate, endDate, limit }) => {
+    try {
+      const result = await ga4Analytics.getOrganicLandingPages(propertyId, startDate, endDate, limit, accountId);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "analytics_content_performance",
+  "Analyze content performance by Content Group in GA4 (Requires Content Groups to be configured in GA4 Admin)",
+  {
+    propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
+    startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().describe("End date (YYYY-MM-DD)"),
+    limit: z.number().optional().describe("Max rows (default 50)")
+  },
+  async ({ propertyId, accountId, startDate, endDate, limit }) => {
+    try {
+      const result = await ga4Analytics.getContentPerformance(propertyId, startDate, endDate, limit, accountId);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "analytics_ecommerce",
+  "Get ecommerce performance (products, revenue) from GA4",
+  {
+    propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
+    startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().describe("End date (YYYY-MM-DD)"),
+    limit: z.number().optional().describe("Max rows (default 50)")
+  },
+  async ({ propertyId, accountId, startDate, endDate, limit }) => {
+    try {
+      const result = await ga4Analytics.getEcommerce(propertyId, startDate, endDate, limit, accountId);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "analytics_realtime",
+  "Get realtime active users broken down by page, country, and device",
+  {
+    propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups")
+  },
+  async ({ propertyId, accountId }) => {
+    try {
+      const result = await ga4Realtime.getRealtimeData(propertyId, accountId);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "analytics_user_behavior",
+  "Get user behavior breakdown (Device, Country, Engagement) in a single batch",
+  {
+    propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
+    startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().describe("End date (YYYY-MM-DD)")
+  },
+  async ({ propertyId, accountId, startDate, endDate }) => {
+    try {
+      const result = await ga4Behavior.getUserBehavior(propertyId, startDate, endDate, accountId);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "analytics_audience_segments",
+  "Get audience segmentation (New vs Returning, Age, OS) in a single batch",
+  {
+    propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
+    startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().describe("End date (YYYY-MM-DD)")
+  },
+  async ({ propertyId, accountId, startDate, endDate }) => {
+    try {
+      const result = await ga4Behavior.getAudienceSegments(propertyId, startDate, endDate, accountId);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "analytics_conversion_funnel",
+  "Analyze top converting pages and events",
+  {
+    propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
+    startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().describe("End date (YYYY-MM-DD)"),
+    eventName: z.string().optional().describe("Filter by specific event name")
+  },
+  async ({ propertyId, accountId, startDate, endDate, eventName }) => {
+    try {
+      const result = await ga4Behavior.getConversionFunnel(propertyId, startDate, endDate, eventName, accountId);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "analytics_pagespeed_correlation",
+  "Correlate GA4 engagement metrics with PageSpeed Insights scores for top organic pages",
+  {
+    propertyId: z.string().describe("GA4 Property ID"),
+    accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
+    domain: z.string().describe("The domain of the site (e.g. example.com) to construct URLs"),
+    startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().describe("End date (YYYY-MM-DD)"),
+    limit: z.number().optional().describe("Number of pages to analyze (default 5)"),
+    strategy: z.enum(["mobile", "desktop"]).optional().describe("PageSpeed strategy (default mobile)")
+  },
+  async ({ propertyId, accountId, domain, startDate, endDate, limit, strategy }) => {
+    try {
+      const result = await ga4PageSpeed.getPageSpeedCorrelation(propertyId, domain, startDate, endDate, limit, strategy, accountId);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+// --- Cross-Platform Tools ---
+
+server.tool(
+  "page_analysis",
+  "Compare GSC ranking data with GA4 behavior data for top pages to find opportunities",
+  {
+    gscSiteUrl: z.string().describe("GSC Site URL"),
+    ga4PropertyId: z.string().describe("GA4 Property ID"),
+    startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().describe("End date (YYYY-MM-DD)"),
+    limit: z.number().optional().describe("Max pages (default 50)"),
+    ga4AccountId: z.string().optional().describe("Optional GA4 account ID"),
+    gscAccountId: z.string().optional().describe("Optional GSC account ID")
+  },
+  async ({ gscSiteUrl, ga4PropertyId, startDate, endDate, limit, ga4AccountId, gscAccountId }) => {
+    try {
+      const result = await ga4GscComparator.analyzePagesCrossPlatform(gscSiteUrl, ga4PropertyId, startDate, endDate, limit, ga4AccountId, gscAccountId);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "traffic_health_check",
+  "Diagnose tracking issues by comparing GSC clicks vs GA4 organic sessions",
+  {
+    gscSiteUrl: z.string().describe("GSC Site URL"),
+    ga4PropertyId: z.string().describe("GA4 Property ID"),
+    startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().describe("End date (YYYY-MM-DD)"),
+    ga4AccountId: z.string().optional().describe("Optional GA4 account ID"),
+    gscAccountId: z.string().optional().describe("Optional GSC account ID")
+  },
+  async ({ gscSiteUrl, ga4PropertyId, startDate, endDate, ga4AccountId, gscAccountId }) => {
+    try {
+      const result = await ga4GscComparator.checkTrafficHealth(gscSiteUrl, ga4PropertyId, startDate, endDate, ga4AccountId, gscAccountId);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "opportunity_matrix",
+  "Prioritize SEO tasks by combining signals from GSC, GA4, and Bing",
+  {
+    gscSiteUrl: z.string().describe("GSC Site URL"),
+    bingSiteUrl: z.string().describe("Bing Site URL"),
+    ga4PropertyId: z.string().describe("GA4 Property ID"),
+    startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().describe("End date (YYYY-MM-DD)"),
+    limit: z.number().optional().describe("Max results (default 20)"),
+    ga4AccountId: z.string().optional().describe("Optional GA4 account ID"),
+    gscAccountId: z.string().optional().describe("Optional GSC account ID"),
+    bingAccountId: z.string().optional().describe("Optional Bing account ID")
+  },
+  async ({ gscSiteUrl, bingSiteUrl, ga4PropertyId, startDate, endDate, limit, ga4AccountId, gscAccountId, bingAccountId }) => {
+    try {
+      const result = await ga4GscBingComparator.getOpportunityMatrix(gscSiteUrl, bingSiteUrl, ga4PropertyId, startDate, endDate, limit, ga4AccountId, gscAccountId, bingAccountId);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "brand_analysis",
+  "Analyze Brand vs Non-Brand performance across GSC, Bing, and GA4",
+  {
+    brandTerms: z.array(z.string()).describe("List of brand keywords"),
+    gscSiteUrl: z.string().describe("GSC Site URL"),
+    bingSiteUrl: z.string().describe("Bing Site URL"),
+    ga4PropertyId: z.string().describe("GA4 Property ID"),
+    startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().describe("End date (YYYY-MM-DD)"),
+    ga4AccountId: z.string().optional().describe("Optional GA4 account ID"),
+    gscAccountId: z.string().optional().describe("Optional GSC account ID"),
+    bingAccountId: z.string().optional().describe("Optional Bing account ID")
+  },
+  async ({ brandTerms, gscSiteUrl, bingSiteUrl, ga4PropertyId, startDate, endDate, ga4AccountId, gscAccountId, bingAccountId }) => {
+    try {
+      const result = await ga4GscBingComparator.getBrandAnalysis(brandTerms, gscSiteUrl, bingSiteUrl, ga4PropertyId, startDate, endDate, ga4AccountId, gscAccountId, bingAccountId);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
 server.resource(
   "sites",
   "sites://list",
@@ -1812,7 +2140,7 @@ server.prompt(
   "analyze-site-performance",
   {
     siteUrl: z.string().describe("The URL of the site to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    engine: z.enum(["google", "bing", "ga4"]).optional().describe("The search engine to use (default: google)"),
     startDate: z.string().optional().describe("Start date (YYYY-MM-DD), defaults to 1 month ago"),
     endDate: z.string().optional().describe("End date (YYYY-MM-DD), defaults to today")
   },
@@ -1829,13 +2157,15 @@ server.prompt(
         role: "user",
         content: {
           type: "text",
-          text: `Please analyze the performance of the site ${siteUrl} on ${engine === 'google' ? 'Google' : 'Bing'} for the period ${start} to ${end}.
+          text: `Please analyze the performance of the site ${siteUrl} on ${engine === 'google' ? 'Google' : engine === 'bing' ? 'Bing' : 'GA4'} for the period ${start} to ${end}.
         
         ${engine === 'google'
               ? `Use the 'analytics_query' tool with startDate='${start}' and endDate='${end}' to get detailed metrics.`
-              : `Use the 'bing_analytics_query' tool with startDate='${start}' and endDate='${end}' to get query stats and 'bing_analytics_page' for page-level performance.`}
+              : engine === 'bing'
+                ? `Use the 'bing_analytics_query' tool with startDate='${start}' and endDate='${end}' to get query stats and 'bing_analytics_page' for page-level performance.`
+                : `Use the 'analytics_page_performance' and 'analytics_traffic_sources' tools with propertyId='[PROPERTY_ID]', startDate='${start}' and endDate='${end}'.`}
         
-        Provide a summary of the site's health and any opportunities for improvement on ${engine === 'google' ? 'Google' : 'Bing'}.`
+        Provide a summary of the site's health and any opportunities for improvement on ${engine === 'google' ? 'Google' : engine === 'bing' ? 'Bing' : 'GA4'}.`
         }
       }]
     };
@@ -1846,7 +2176,7 @@ server.prompt(
   "compare-performance",
   {
     siteUrl: z.string().describe("The URL of the site to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    engine: z.enum(["google", "bing", "ga4"]).optional().describe("The search engine to use (default: google)"),
     months: z.number().optional().describe("Number of months to compare (default: 1)")
   },
   ({ siteUrl, engine = "google", months = 1 }) => {
@@ -1876,15 +2206,16 @@ ${engine === 'google'
 - period2Start: '${start2}', period2End: '${end2}'
 
 Analyze the changes in clicks, impressions, CTR, and position.
-Highlight any significant improvements or declines.
 If there are notable changes, use 'analytics_top_queries' to identify which queries are driving the change.`
-              : `Use the 'bing_analytics_compare_periods' tool with:
+              : engine === 'bing'
+                ? `Use the 'bing_analytics_compare_periods' tool with:
 - startDate1: '${start1}', endDate1: '${end1}'
 - startDate2: '${start2}', endDate2: '${end2}'
 
 Analyze the changes in clicks, impressions, CTR, and position.
-Highlight any significant improvements or declines.
-Use 'bing_analytics_query' with date filters to identify which queries are driving changes in traffic.`
+Use 'bing_analytics_query' to identify which queries are driving changes.`
+                : `Use the 'analytics_page_performance' tool twice (once for each period: ${start1} to ${end1} and ${start2} to ${end2}) to compare sessions and engagement.
+Analyze changes in key metrics and identify top performing pages.`
             }`
         }
       }]
@@ -1896,7 +2227,7 @@ server.prompt(
   "find-declining-pages",
   {
     siteUrl: z.string().describe("The URL of the site to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    engine: z.enum(["google", "bing", "ga4"]).optional().describe("The search engine to use (default: google)"),
     months: z.number().optional().describe("Number of months to analyze (default: 1)")
   },
   ({ siteUrl, engine = "google", months = 1 }) => {
@@ -1919,10 +2250,14 @@ ${engine === 'google'
 1. Use 'analytics_compare_periods' to compare this period (${start} to ${end}) vs the previous ${months} month(s)
 2. Use 'analytics_query' with dimension 'page' to get page-level data
 3. Identify pages with significant click/impression drops`
-              : `Steps:
+              : engine === 'bing'
+                ? `Steps:
 1. Use 'bing_analytics_compare_periods' to identify overall traffic direction.
 2. Use 'bing_analytics_page' with startDate='${start}' and endDate='${end}' to get top pages.
 3. Use 'bing_analytics_page_query' for specific pages to see which queries dropped.`
+                : `Steps:
+1. Use 'analytics_page_performance' for the current period and compare it to historical data.
+2. Identify landing pages with significant drops in sessions or engagement.`
             }
 
 For each declining page, provide:
@@ -1939,7 +2274,7 @@ server.prompt(
   "keyword-opportunities",
   {
     siteUrl: z.string().describe("The URL of the site to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    engine: z.enum(["google", "bing", "ga4"]).optional().describe("The search engine to use (default: google)"),
     months: z.number().optional().describe("Number of months of data to analyze (default: 3)")
   },
   ({ siteUrl, engine = "google", months = 3 }) => {
@@ -1957,10 +2292,11 @@ server.prompt(
           type: "text",
           text: `Find keyword opportunities for ${siteUrl} on ${engine === 'google' ? 'Google' : 'Bing'} for the last ${months} months (${start} to ${end}).
         
-        ${engine === 'google'
+${engine === 'google'
               ? "Use 'analytics_top_queries' or 'seo_low_hanging_fruit' to find high-potential targets."
-              : `Use 'bing_opportunity_finder' or 'bing_striking_distance' to find high-potential keywords.
-               Use the filtering parameters (startDate='${start}', endDate='${end}') where available in Bing tools.`}
+              : engine === 'bing'
+                ? `Use 'bing_opportunity_finder' or 'bing_striking_distance' to find high-potential keywords.`
+                : `Note: GA4 does not provide keyword-level data. Use 'analytics_organic_landing_pages' to find top organic pages and 'analytics_page_performance' to identify engagement opportunities.`}
         
         Analyze for:
         1. **Low CTR, High Impressions**: Queries where you rank but don't get clicks
@@ -1979,7 +2315,7 @@ server.prompt(
   {
     siteUrl: z.string().describe("The URL of the site"),
     pageUrl: z.string().describe("The URL of the new content to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    engine: z.enum(["google", "bing", "ga4"]).optional().describe("The search engine to use (default: google)"),
     months: z.number().optional().describe("Number of months to analyze (default: 1)")
   },
   ({ siteUrl, pageUrl, engine = "google", months = 1 }) => {
@@ -1997,9 +2333,9 @@ server.prompt(
           type: "text",
           text: `Analyze the impact of new content at ${pageUrl} on site ${siteUrl} in ${engine === 'google' ? 'Google' : 'Bing'} for the period ${start} to ${end}.
 
-1. Use '${engine === 'google' ? 'inspection_inspect' : 'bing_url_info'}' to check indexing status.
-2. Use '${engine === 'google' ? 'analytics_query' : 'bing_analytics_page_query'}' with startDate='${start}' and endDate='${end}' to get performance for this specific URL.
-3. Identify which queries are driving traffic to this page.
+1. Use '${engine === 'google' ? 'inspection_inspect' : engine === 'bing' ? 'bing_url_info' : 'analytics_page_performance'}' to check status.
+2. Use '${engine === 'google' ? 'analytics_query' : engine === 'bing' ? 'bing_analytics_page_query' : 'analytics_page_performance'}' with startDate='${start}' and endDate='${end}' to get performance for this specific URL.
+3. Identify which queries (GSC/Bing) or traffic sources (GA4) are driving traffic to this page.
 
 Provide:
 - Indexing status
@@ -2016,7 +2352,7 @@ server.prompt(
   "mobile-vs-desktop",
   {
     siteUrl: z.string().describe("The URL of the site to analyze"),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    engine: z.enum(["google", "bing", "ga4"]).optional().describe("The search engine to use (default: google)"),
     months: z.number().optional().describe("Number of months to analyze (default: 1)")
   },
   ({ siteUrl, engine = "google", months = 1 }) => {
@@ -2036,7 +2372,9 @@ server.prompt(
 
 ${engine === 'google'
               ? `Use 'analytics_query' with dimension 'device', startDate='${start}', and endDate='${end}' to get device-level metrics.`
-              : "Note: Bing Webmaster API provides limited native device breakdown via the public API, but check if 'bing_analytics_query' or 'bing_analytics_page' results show device distinctions if available."}
+              : engine === 'bing'
+                ? "Note: Bing Webmaster API provides limited native device breakdown via the public API."
+                : `Use 'analytics_user_behavior' to get a full device breakdown (Mobile vs Desktop vs Tablet) for GA4.`}
 
 Analyze:
 1. Click and impression distribution across devices (if data available)
@@ -2058,7 +2396,7 @@ server.prompt(
   "site-health-check",
   {
     siteUrl: z.string().optional().describe("Optional. The URL of a specific site to check."),
-    engine: z.enum(["google", "bing"]).optional().describe("The search engine to use (default: google)"),
+    engine: z.enum(["google", "bing", "ga4"]).optional().describe("The search engine to use (default: google)"),
     months: z.number().optional().describe("Number of months to analyze for trends (default: 1)")
   },
   ({ siteUrl, engine = "google", months = 1 }) => {
@@ -2076,16 +2414,16 @@ server.prompt(
           type: "text",
           text: `Run a comprehensive health check for ${siteUrl ? siteUrl : 'all verified sites'} on ${engine === 'google' ? 'Google' : 'Bing'} analyzing the period ${start} to ${end}.
 
-Use the '${engine === 'google' ? 'sites_health_check' : 'bing_sites_health'}' tool.
+Use the '${engine === 'google' ? 'sites_health_check' : engine === 'bing' ? 'bing_sites_health' : 'analytics_user_behavior'}' tool.
 
 Then for each site in the results:
 1. **Summarize the status** (healthy / warning / critical).
-2. **Performance:** Report changes in clicks, impressions, CTR, and position by comparing this period to the previous one.
-3. **Sitemaps:** Note any errors or warnings (use '${engine === 'google' ? 'sitemaps_list' : 'bing_crawl_issues'}').
-4. **Anomalies:** Highlight any traffic drops (use '${engine === 'google' ? 'analytics_anomalies' : 'bing_analytics_detect_anomalies'}' with appropriate day counts).
+2. **Performance:** Report changes in key metrics (clicks/impressions for search, sessions/engagement for GA4).
+3. **Internal Health:** Note any errors or warnings (use '${engine === 'google' ? 'sitemaps_list' : engine === 'bing' ? 'bing_crawl_issues' : 'analytics_conversion_funnel'}').
+4. **Anomalies:** Highlight any traffic drops (use '${engine === 'google' ? 'analytics_anomalies' : engine === 'bing' ? 'bing_analytics_detect_anomalies' : 'analytics_realtime'}').
 
 If any site has a 'critical' or 'warning' status:
-- For critical drops, use '${engine === 'google' ? 'analytics_drop_attribution' : 'bing_analytics_drop_attribution'}'.
+- For critical drops, use '${engine === 'google' ? 'analytics_drop_attribution' : engine === 'bing' ? 'bing_analytics_drop_attribution' : 'analytics_user_behavior'}'.
 - Provide 3 prioritized action items.`
         }
       }]
@@ -2125,23 +2463,37 @@ async function main() {
   }
 
   // Check for credentials
-  const hasServiceAccount = !!process.env.GOOGLE_APPLICATION_CREDENTIALS || (!!process.env.GOOGLE_CLIENT_EMAIL && !!process.env.GOOGLE_PRIVATE_KEY);
-  const tokenPath = join(homedir(), '.search-console-mcp-tokens.enc');
-  const hasOAuthTokens = existsSync(tokenPath);
+  const config = await loadConfig();
+  const accounts = Object.values(config.accounts);
 
-  if (!hasServiceAccount && !hasOAuthTokens) {
+  const hasGoogle = accounts.some(a => a.engine === 'google') ||
+    !!process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+    (!!process.env.GOOGLE_CLIENT_EMAIL && !!process.env.GOOGLE_PRIVATE_KEY) ||
+    existsSync(join(homedir(), '.search-console-mcp-tokens.enc')); // Legacy check
+
+  const hasBing = accounts.some(a => a.engine === 'bing') || !!process.env.BING_API_KEY;
+  const hasGA4 = accounts.some(a => a.engine === 'ga4');
+
+  if (!hasGoogle && !hasBing && !hasGA4) {
     printBoxHeader('Authentication', colors.red);
 
     console.error(`${colors.bold}${colors.dim}🔍 Connection Status:${colors.reset}`);
-    printStatusLine('Google', false);
-    const bingConnected = !!process.env.BING_API_KEY;
-    printStatusLine('Bing', bingConnected);
+    printStatusLine('Google', hasGoogle);
+    printStatusLine('GA4', hasGA4);
+    printStatusLine('Bing', hasBing);
     console.error('');
 
-    console.error(`${colors.red}✘${colors.reset} ${colors.bold}Google not configured.${colors.reset}`);
-    console.error(`${colors.blue}ℹ${colors.reset} ${colors.dim}Run:${colors.reset} ${colors.bold}${colors.cyan}search-console-mcp setup --engine=google${colors.reset}`);
+    if (!hasGoogle) {
+      console.error(`${colors.red}✘${colors.reset} ${colors.bold}Google not configured.${colors.reset}`);
+      console.error(`${colors.blue}ℹ${colors.reset} ${colors.dim}Run:${colors.reset} ${colors.bold}${colors.cyan}search-console-mcp setup --engine=google${colors.reset}`);
+    }
 
-    if (!bingConnected) {
+    if (!hasGA4) {
+      console.error(`${colors.red}✘${colors.reset} ${colors.bold}GA4 not configured.${colors.reset}`);
+      console.error(`${colors.blue}ℹ${colors.reset} ${colors.dim}Run:${colors.reset} ${colors.bold}${colors.cyan}search-console-mcp setup --engine=ga4${colors.reset}`);
+    }
+
+    if (!hasBing) {
       console.error(`\n${colors.red}✘${colors.reset} ${colors.bold}Bing not configured.${colors.reset}`);
       console.error(`${colors.blue}ℹ${colors.reset} ${colors.dim}Run:${colors.reset} ${colors.bold}${colors.cyan}search-console-mcp setup --engine=bing${colors.reset}`);
     }
@@ -2152,10 +2504,11 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  const googleStatus = (hasServiceAccount || hasOAuthTokens) ? `${colors.green}✔ Google${colors.reset}` : `${colors.red}✘ Google${colors.reset}`;
-  const bingStatus = !!process.env.BING_API_KEY ? `${colors.green}✔ Bing${colors.reset}` : `${colors.red}✘ Bing${colors.reset}`;
+  const googleStatus = hasGoogle ? `${colors.green}✔ Google${colors.reset}` : `${colors.red}✘ Google${colors.reset}`;
+  const ga4Status = hasGA4 ? `${colors.green}✔ GA4${colors.reset}` : `${colors.red}✘ GA4${colors.reset}`;
+  const bingStatus = hasBing ? `${colors.green}✔ Bing${colors.reset}` : `${colors.red}✘ Bing${colors.reset}`;
 
-  console.error(`Search Console MCP running on stdio [ ${googleStatus} | ${bingStatus} ]`);
+  console.error(`Search Console MCP running on stdio [ ${googleStatus} | ${ga4Status} | ${bingStatus} ]`);
 }
 
 main().catch((error) => {

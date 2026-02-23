@@ -14,5 +14,9 @@ export function getEnabledPlatforms() {
     const hasOAuthTokens = existsSync(tokenPath) || existsSync(configPath);
     const isGoogleEnabled = hasServiceAccount || hasOAuthTokens;
     const isBingEnabled = !!process.env.BING_API_KEY;
-    return { isGoogleEnabled, isBingEnabled };
+
+    // GA4 needs the config file (for service accounts or oauth)
+    const isGA4Enabled = existsSync(configPath);
+
+    return { isGoogleEnabled, isBingEnabled, isGA4Enabled };
 }
