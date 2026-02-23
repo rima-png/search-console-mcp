@@ -2,7 +2,7 @@
   "name": "search-console-mcp",
   "version": "1.13.0",
   "mcpName": "io.github.saurabhsharma2u/search-console-mcp",
-  "description": "MCP server for Google Search and Bing Search APIs",
+  "description": "MCP server for Google Search Console, Bing Webmaster Tools, and Google Analytics 4",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -25,7 +25,9 @@
     "bing-search",
     "bing webmaster",
     "google-search-console",
-    "seo"
+    "seo",
+    "google analytics",
+    "ga4"
   ],
   "author": "",
   "license": "MIT",

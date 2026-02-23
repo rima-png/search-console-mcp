@@ -3,7 +3,7 @@ title: "Compare Engines"
 description: "Compare your site's performance across Google and Bing side by side."
 ---
 
-The `compare_engines` tool lets you see how your site performs on **Google vs. Bing** for the same keywords, pages, countries, or devices — all in a single request.
+The `compare_engines` and `opportunity_matrix` tools let you see how your site performs across **Google, Bing, and GA4** side by side.
 
 ## What It Does
 

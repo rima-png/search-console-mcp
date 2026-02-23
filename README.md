@@ -1,7 +1,7 @@
 
 # Search Console MCP
 
-A Model Context Protocol (MCP) server that transforms how you interact with **Google Search Console** and **Bing Webmaster Tools**. Stop exporting CSVs and start asking questions.
+A Model Context Protocol (MCP) server that transforms how you interact with **Google Search Console**, **Bing Webmaster Tools**, and **Google Analytics 4**. Stop exporting CSVs and start asking questions.
 
 [📚 View Documentation](https://searchconsolemcp.mintlify.app/)
 
@@ -12,23 +12,19 @@ A Model Context Protocol (MCP) server that transforms how you interact with **Go
 
 ## Why use this?
 
-### ❌ The Old Way
-1.  Open Google Search Console → Export CSV
-2.  Open Bing Webmaster Tools → Export CSV
-3.  Paste both into a spreadsheet
-4.  Manually compare keywords across engines
-5.  Switch between accounts for different clients
-6.  Repeat weekly
+### ❌ The Old, Broken Way
+*   **Data Silos**: Manually checking Google, then Bing, then GA4.
+*   **Manual Correlation**: Exporting 3 different CSVs and using VLOOKUPs to see if your #1 ranking page actually converts.
+*   **Switching Fatigue**: Logging in and out to manage multiple clients or properties.
+*   **AI Context Limits**: Uploading giant spreadsheets that hit context limits and cause model hallucinations.
 
-### ✅ The New Way
-**Just ask:**
-> "Find low-hanging fruit keywords (positions 11-20) with high impressions that I should optimize."
+### ✅ The Search Console MCP Way
+*   **Platform Synergy**: **GSC + Bing + GA4** in a single context window. Stop exporting, start analyzing.
+*   **Deterministic Intelligence**: The server performs the complex SEO math (cannibalization, Z-score anomalies, striking distance) so your AI agent gets curated insights, not raw data piles.
+*   **Cross-Platform ROI**: Use the **Opportunity Matrix** to prioritize keywords that have high search visibility (GSC) but poor on-site engagement (GA4).
+*   **Zero-Config Multi-Account**: Connect 20+ accounts. The server automatically resolves the correct credentials for every site URL.
 
-> "Compare my Google and Bing performance — where am I leaving Bing traffic on the table?"
-
-> "Run a health check across all my sites and give me 3 actions for next week."
-
-**One server. Both engines. Multiple accounts. Zero spreadsheets.**
+**One Server. Three Platforms. Infinite Accounts. Actionable Intelligence.**
 
 ---
 ## 🎯 Magic Prompts
@@ -61,6 +57,9 @@ Copy and paste these into your MCP client (Claude Desktop, etc.) to see the inte
 
 #### ⚠️ Google Dependency Check
 > "Am I too dependent on Google? Check my click share across both engines and flag any keywords where over 85% of traffic comes from Google."
+
+#### 💰 The ROI Prioritizer (GSC + GA4)
+> "Run an `opportunity_matrix` for my top 20 pages. Which high-visibility pages have the lowest engagement or conversion rates? These are my conversion optimization priorities."
 
 ---
 

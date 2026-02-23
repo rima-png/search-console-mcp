@@ -16,11 +16,12 @@ This is where the magic happens.
 *   **Request Handlers:** Receives inputs, validates them with **Zod**, and routes them to the correct tool logic.
 *   **SEO Intelligence Engine:** Performs the heavy lifting—calculating rolling averages, standard deviations, and trend analysis.
 
-### 3. Google API Layer
-The server uses authorized service accounts to communicate with:
-*   **Search Console API:** For performance data and site management.
-*   **PageSpeed Insights API:** For performance and Lighthouse data.
-*   **URL Inspection API:** For individual page indexing status.
+### 3. API Layer
+The server communicates with multiple upstream providers:
+*   **Google Search Console API:** Performance data and site management.
+*   **Bing Webmaster Tools API:** Search data, crawl issues, and IndexNow.
+*   **Google Analytics 4 API:** Real user behavior and conversion data.
+*   **PageSpeed Insights API:** Performance and Lighthouse data.
 
 ## Data Flow
 

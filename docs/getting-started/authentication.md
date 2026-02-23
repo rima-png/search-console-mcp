@@ -110,6 +110,29 @@ Alternatively, run `npx search-console-mcp setup` and choose Option 3 to configu
 
 ---
 
+## 4. Google Analytics 4 (Service Account)
+
+GA4 integration currently requires a Service Account for the most reliable connection.
+
+### Step 1: Automated Setup
+
+Run the setup wizard with the GA4 flag:
+
+```bash
+npx search-console-mcp setup --engine=ga4
+```
+
+### Step 2: Granting Property Access
+
+Just like Search Console, you must add your Service Account email to your GA4 property:
+1.  Open [Google Analytics](https://analytics.google.com/).
+2.  Go to **Admin** > **Property Settings** > **Property Access Management**.
+3.  Click the blue **+** button > **Add users**.
+4.  Enter the **Service Account Email**.
+5.  Select the **Viewer** role (minimum) and click **Add**.
+
+---
+
 ## What's Next?
 
 Once you're authenticated, you can manage your accounts and connect additional ones:

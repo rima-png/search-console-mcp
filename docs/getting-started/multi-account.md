@@ -12,6 +12,7 @@ Common setups include:
 - A **personal Google account** for your blog
 - A **company Google account** for your work sites
 - A **Bing account** for Microsoft search data
+- A **GA4 Service Account** for behavioral analytics
 - Separate accounts for **different clients or teams**
 
 ---

@@ -3,7 +3,7 @@ title: "Analytics Tools"
 description: "Mastering search performance data."
 ---
 
-The Analytics tools are the foundation of your SEO agent's knowledge. They allow you to pull basic data or perform complex time-series analysis.
+The Analytics tools are the foundation of your SEO agent's knowledge. They allow you to pull basic data or perform complex time-series analysis across **Google Search Console, Bing, and Google Analytics 4**.
 
 ## Core Tools
 
@@ -16,6 +16,11 @@ These are your primary tools for getting raw keyword data. They support filterin
 Calculates the delta between two time windows.
 *   **When to use:** When you need to see if you are growing or shrinking.
 *   **Best for:** "Compare this week's performance to last week."
+
+### `analytics_page_performance` (GA4)
+Detailed page metrics from Google Analytics 4, including sessions, engagement rates, and unique views.
+*   **When to use:** When you need to understand how users behave *after* they click from search results.
+*   **Best for:** "Show me the engagement rate for my top landing pages."
 
 ## Advanced Analysis
 

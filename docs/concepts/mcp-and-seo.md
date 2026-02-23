@@ -26,7 +26,10 @@ A human can't manually check for keyword cannibalization across 10,000 pages eve
 ### 2. Reducing Hallucinations
 When an LLM performs math, it's prone to errors. By offloading calculation to the MCP server (written in TypeScript), we ensure the agent is reasoning with 100% accurate metrics.
 
-### 3. State-of-the-Art Intelligence
+### 3. Cross-Platform Correlation
+Standard SEO data is siloed. By combining **GSC, Bing, and GA4** in a single protocol, agents can identify correlations that humans often miss—like a ranking drop that actually *increases* revenue because it pruned low-intent traffic.
+
+### 4. State-of-the-Art Intelligence
 Our MCP server doesn't just pass strings; it implements SEO primitives like:
 *   **Ranking Buckets:** Categorizing results into 'Top 3', 'Page 1', etc.
 *   **Traffic Deltas:** Calculating whether a change is statistically significant.

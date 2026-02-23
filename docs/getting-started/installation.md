@@ -8,7 +8,7 @@ We designed `search-console-mcp` to work instantly with your favorite AI editor.
 ## Prerequisites
 
 1.  **Node.js 18 or higher**
-2.  **A verified Google Search Console or Bing Webmaster Tools property**
+2.  **A verified Google Search Console, Bing Webmaster Tools, or Google Analytics 4 property**
 
 ## 🚀 One-Line Setup
 
@@ -112,7 +112,7 @@ This will show all connected Google and Bing accounts and which sites they can a
 
 ## What's Next?
 
-- [Authentication](/getting-started/authentication) — Detailed auth options (OAuth, Service Account, API Key)
-- [Managing Accounts](/getting-started/accounts) — List, remove, and restrict accounts
-- [Multi-Account Support](/getting-started/multi-account) — Connect multiple accounts across engines
+- [Authentication](/getting-started/authentication) — Detailed auth options (OAuth, Service Account, API Key for Google, Bing, and GA4)
+- [Managing Accounts](/getting-started/accounts) — List, remove, and restrict accounts across all platforms
+- [Multi-Account Support](/getting-started/multi-account) — Connect multiple accounts across all platforms
 - [First Queries](/getting-started/first-queries) — Start asking your AI agent questions

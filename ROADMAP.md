@@ -136,6 +136,8 @@ This document outlines the planned features and improvements for this project.
 - **Google Analytics 4 (GA4) Support**:
   - Comprehensive suite of analytics tools: `analytics_page_performance`, `analytics_traffic_sources`, `analytics_ecommerce`, `analytics_realtime`
   - Auth support for OAuth and Service Accounts via Setup Wizard
+- **URL Inspection & Utilities**:
+  - `inspection_batch` - **[NEW]** Bulk URL inspection for GSC and Bing (up to 5 URLs in parallel)
 - **Cross-Platform Comparison Tools**:
   - `page_analysis` - Correlate ranking (GSC) with behavior (GA4)
   - `opportunity_matrix` - Master prioritization list combining GSC, Bing, and GA4 signals
@@ -147,7 +149,8 @@ This document outlines the planned features and improvements for this project.
 
 ## 🚧 In Progress
 
-- `inspection_bulk` - Bulk URL inspection for GSC and Bing
+- **Performance Optimizations**: Reduce API footprint in SEO intelligence tools
+- **Export Capabilities**: Initial work on CSV/JSON export formats
 
 ---
 

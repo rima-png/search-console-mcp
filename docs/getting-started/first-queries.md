@@ -52,7 +52,18 @@ Now try the health check tool to get an instant diagnostic across your propertie
 
 The agent will use the `sites_health_check` and `bing_sites_health` tools to check performance trends, sitemap status, and traffic anomalies.
 
-## Step 5: IndexNow (Bing Only)
+## Step 5: Correlate Search with Behavior (GA4)
+
+If you've connected a GA4 property, you can run cross-platform analysis.
+
+**User Prompt:**
+> "Analyze https://example.com using the opportunity matrix. Which keywords are ranking well on Google but have poor engagement on-site?"
+
+**Expected Agent Steps:**
+1. Call `opportunity_matrix`.
+2. This will internally fetch GSC rankings and correlate them with GA4 metrics (sessions, engagement rate).
+
+## Step 6: IndexNow (Bing Only)
 
 If you have a site verified on Bing, try notifying them of a new URL.
 

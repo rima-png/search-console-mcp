@@ -3,14 +3,14 @@ title: "Overview"
 description: "What is search-console-mcp?"
 ---
 
-**search-console-mcp** is an open-source implementation of the [Model Context Protocol](https://modelcontextprotocol.io) that gives AI agents direct, structured access to **Google Search Console (GSC)** and **Bing Webmaster Tools**.
+**search-console-mcp** is an open-source implementation of the [Model Context Protocol](https://modelcontextprotocol.io) that gives AI agents direct, structured access to **Google Search Console (GSC)**, **Bing Webmaster Tools**, and **Google Analytics 4 (GA4)**.
 
 Unlike simple API wrappers, this project focuses on providing **SEO Intelligence Tools**. Instead of just asking an agent to "look at my data," you can give it tools to "find quick wins," "detect traffic anomalies," or "submit URLs instantly."
 
 ## Key Capabilities
 
-*   **Multi-Engine Support:** Manage valid sites and data for both Google and Bing in one place.
-*   **Advanced Analytics:** Go beyond basic queries with multi-dimensional analysis, rolling averages, and drop attribution for both search engines.
+*   **Multi-Platform Support:** Manage sites and behavior data for Google, Bing, and GA4 in one place.
+*   **Advanced Analytics:** Multi-dimensional analysis, rolling averages, and behavior correlation across all platforms.
 *   **SEO Insights:** Deterministic detection of cannibalization, Striking Distance keywords, and "Low-Hanging Fruit."
 *   **Site Health Check:** Automated diagnostics across all your properties — performance trends, sitemap status, and anomaly detection in one call.
 *   **Instant Indexing:** Use **IndexNow** to instantly notify Bing and other engines of content changes.
@@ -27,7 +27,7 @@ Working with SEO data in LLMs usually involves:
 
 ## The Solution
 
-With this MCP server, the agent has a "toolbox." When you ask "Why did my traffic drop?", the agent doesn't guess. It calls `analytics_time_series` to check for anomalies, `inspect_url` to see if pages were de-indexed, and `seo_insights` to check for ranking shifts.
+With this MCP server, the agent has a "toolbox." When you ask "Why did my traffic drop?", the agent doesn't guess. It calls `analytics_time_series` to check for anomalies, `inspect_url` to see if pages were de-indexed, and `traffic_health_check` to correlate with GA4 behavior.
 
 ## Supported Clients
 
