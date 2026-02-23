@@ -36,6 +36,12 @@ export interface AppConfig {
     accounts: Record<string, AccountConfig>;
 }
 
+let cachedConfig: AppConfig | null = null;
+
+export function resetConfigCache() {
+    cachedConfig = null;
+}
+
 function getEncryptionKey() {
     const mId = machineIdSync();
     const salt = process.env.USER || 'sc-mcp-salt';
@@ -68,6 +74,10 @@ function decrypt(data: string): string {
  * Load the unified configuration, including lazy migration from legacy Google tokens.
  */
 export async function loadConfig(): Promise<AppConfig> {
+    if (cachedConfig) {
+        return cachedConfig;
+    }
+
     let config: AppConfig = { accounts: {} };
 
     // 1. Try to load from new unified config
@@ -162,6 +172,7 @@ export async function loadConfig(): Promise<AppConfig> {
         }
     }
 
+    cachedConfig = config;
     return config;
 }
 
@@ -169,6 +180,7 @@ export async function saveConfig(config: AppConfig) {
     try {
         const encrypted = encrypt(JSON.stringify(config));
         writeFileSync(CONFIG_PATH, encrypted, { mode: 0o600 });
+        cachedConfig = config;
     } catch (e) {
         console.error('Failed to save config:', (e as Error).message);
         throw e;
