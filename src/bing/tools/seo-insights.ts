@@ -24,11 +24,11 @@ export interface BingLowHangingFruit {
  */
 export async function findLowHangingFruit(
     siteUrl: string,
-    options: { minImpressions?: number; limit?: number } = {}
+    options: { minImpressions?: number; limit?: number; queryStats?: BingQueryStats[] } = {}
 ): Promise<BingLowHangingFruit[]> {
-    const { minImpressions = 100, limit = 50 } = options;
+    const { minImpressions = 100, limit = 50, queryStats } = options;
 
-    const rows = await getQueryStats(siteUrl);
+    const rows = queryStats || await getQueryStats(siteUrl);
 
     // Filter for low-hanging fruit: position 5-20, high impressions
     const candidates = rows
@@ -66,11 +66,11 @@ export async function findLowHangingFruit(
  */
 export async function findStrikingDistance(
     siteUrl: string,
-    options: { limit?: number } = {}
+    options: { limit?: number; queryStats?: BingQueryStats[] } = {}
 ): Promise<BingQueryStats[]> {
-    const { limit = 50 } = options;
+    const { limit = 50, queryStats } = options;
 
-    const rows = await getQueryStats(siteUrl);
+    const rows = queryStats || await getQueryStats(siteUrl);
 
     return rows
         .filter(r => r.AvgPosition >= 8 && r.AvgPosition <= 15)
@@ -83,11 +83,11 @@ export async function findStrikingDistance(
  */
 export async function findLowCTROpportunities(
     siteUrl: string,
-    options: { minImpressions?: number; limit?: number } = {}
+    options: { minImpressions?: number; limit?: number; queryStats?: BingQueryStats[] } = {}
 ): Promise<Array<BingQueryStats & { benchmarkCtr: number }>> {
-    const { minImpressions = 500, limit = 50 } = options;
+    const { minImpressions = 500, limit = 50, queryStats } = options;
 
-    const rows = await getQueryStats(siteUrl);
+    const rows = queryStats || await getQueryStats(siteUrl);
 
     // Approximate benchmarks for CTR by position (simplified)
     const benchmarks: Record<number, number> = {
@@ -177,10 +177,12 @@ export async function generateRecommendations(
 ): Promise<BingSEOInsight[]> {
     const insights: BingSEOInsight[] = [];
 
+    const queryStatsPromise = getQueryStats(siteUrl);
+
     const [lowHangingFruit, strikingDistance, lowCTR, cannibalization] = await Promise.all([
-        findLowHangingFruit(siteUrl, { limit: 10 }),
-        findStrikingDistance(siteUrl, { limit: 10 }),
-        findLowCTROpportunities(siteUrl, { limit: 10 }),
+        queryStatsPromise.then(stats => findLowHangingFruit(siteUrl, { limit: 10, queryStats: stats })),
+        queryStatsPromise.then(stats => findStrikingDistance(siteUrl, { limit: 10, queryStats: stats })),
+        queryStatsPromise.then(stats => findLowCTROpportunities(siteUrl, { limit: 10, queryStats: stats })),
         detectCannibalization(siteUrl, { limit: 10 })
     ]);
 
