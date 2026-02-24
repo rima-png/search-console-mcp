@@ -165,16 +165,20 @@ This document outlines the planned features and improvements for this project.
 ## 🚧 In Progress
 
 - **Performance Optimizations**: Further reducing API footprint across all insight modules.
-- **Enhanced Documentation**: Mintlify-driven user guides and cross-platform strategies.
+- **Enhanced Documentation**: Mintlify-driven user guides and cross-platform strategies. SEO upgrade (title, description, keywords)
 
 ---
 
-### v2.0.0 - Experience & Scalability
+## Experience & Scalability
 
-- **Export Capabilities**: Export to CSV/JSON for custom reporting
 - **Batch Processing**: Higher-order tools for automated bulk fixes
 
 ---
+
+## AI Exposure
+-- AI Search Visibility tracking 
+-- AI Content Gap Analysis
+-- AI Competitor Analysis
 
 ## 🔮 Future Considerations
 
@@ -193,7 +197,7 @@ This document outlines the planned features and improvements for this project.
 - Debug logging mode (`--verbose`)
 - Request/response caching (Redis support)
 - Rate limit handling with exponential backoff
-- Webhook support for real-time updates
+
 
 ---
 
