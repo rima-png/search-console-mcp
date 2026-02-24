@@ -666,11 +666,14 @@ server.tool(
   "Generate SEO recommendations based on site performance data",
   {
     siteUrl: z.string().describe("The site URL (e.g., https://example.com)"),
-    days: z.number().optional().describe("Number of days to analyze (default: 28)")
+    days: z.number().optional().describe("Number of days to analyze (default: 28)"),
+    engine: z.enum(["google", "bing"]).optional().describe("The search engine (default: google)")
   },
-  async ({ siteUrl, days }) => {
+  async ({ siteUrl, days, engine = "google" }) => {
     try {
-      const result = await seoInsights.generateRecommendations(siteUrl, { days });
+      const result = engine === "google"
+        ? await seoInsights.generateRecommendations(siteUrl, { days })
+        : await bingSeoInsights.generateRecommendations(siteUrl, { days });
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -781,11 +784,14 @@ server.tool(
   {
     siteUrl: z.string().describe("The site URL"),
     days: z.number().optional().describe("Number of days to compare (default: 28)"),
-    limit: z.number().optional().describe("Max results to return (default: 50)")
+    limit: z.number().optional().describe("Max results to return (default: 50)"),
+    engine: z.enum(["google", "bing"]).optional().describe("The search engine (default: google)")
   },
-  async ({ siteUrl, days, limit }) => {
+  async ({ siteUrl, days, limit, engine = "google" }) => {
     try {
-      const result = await seoInsights.findLostQueries(siteUrl, { days, limit });
+      const result = engine === "google"
+        ? await seoInsights.findLostQueries(siteUrl, { days, limit })
+        : await bingSeoInsights.findLostQueries(siteUrl, { days, limit });
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -801,11 +807,14 @@ server.tool(
   {
     siteUrl: z.string().describe("The site URL"),
     brandRegex: z.string().describe("Regex to match brand keywords (e.g. 'acme|acme corp')"),
-    days: z.number().optional().describe("Number of days to analyze (default: 28)")
+    days: z.number().optional().describe("Number of days to analyze (default: 28)"),
+    engine: z.enum(["google", "bing"]).optional().describe("The search engine (default: google)")
   },
-  async ({ siteUrl, brandRegex, days }) => {
+  async ({ siteUrl, brandRegex, days, engine = "google" }) => {
     try {
-      const result = await seoInsights.analyzeBrandVsNonBrand(siteUrl, brandRegex, { days });
+      const result = engine === "google"
+        ? await seoInsights.analyzeBrandVsNonBrand(siteUrl, brandRegex, { days })
+        : await bingSeoInsights.analyzeBrandVsNonBrand(siteUrl, brandRegex, { days });
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };

@@ -79,3 +79,21 @@
 | `traffic_health_check` | Diagnose tracking gaps by comparing GSC clicks to GA4 organic sessions. |
 | `brand_analysis` | Brand vs Non-Brand split across GSC, Bing, and GA4. |
 | `compare_engines` | Compare keyword performance between Google and Bing. |
+ 
+## 🅱️ Bing Webmaster Tools
+| Tool | Description |
+| :--- | :--- |
+| `bing_sites_list` | List all verified sites in Bing. |
+| `bing_analytics_query` | Query search performance from Bing. |
+| `bing_opportunity_finder` | Find low-hanging fruit keywords on Bing. |
+| `bing_seo_recommendations` | Get prioritized SEO insights for Bing. |
+| `bing_url_info` | Detailed indexing and crawl info for a URL (Bing). |
+| `bing_index_now` | Instantly notify search engines of changes via IndexNow. |
+| `bing_crawl_issues` | List crawl issues detected by Bing. |
+| `bing_analytics_detect_anomalies` | Detect daily spikes or drops in Bing traffic. |
+| `bing_analytics_time_series` | Advanced time series analysis for Bing. |
+| `bing_seo_lost_queries` | **[NEW]** Identify queries that lost significant traffic on Bing. |
+| `bing_brand_analysis` | **[NEW]** Analyze performance split between Brand vs Non-Brand traffic on Bing. |
+| `bing_sitemaps_list` | List sitemaps submitted to Bing. |
+| `bing_sitemaps_submit` | Submit a sitemap to Bing. |
+

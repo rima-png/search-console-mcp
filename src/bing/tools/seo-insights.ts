@@ -1,5 +1,6 @@
 import { getQueryStats, getPageStats, getQueryPageStats } from './analytics.js';
 import { BingQueryStats, BingPageStats, BingQueryPageStats } from '../client.js';
+import { safeTestBatch } from '../../common/utils/regex.js';
 
 export interface BingSEOInsight {
     type: 'opportunity' | 'warning' | 'success';
@@ -17,6 +18,26 @@ export interface BingLowHangingFruit {
     ctr: number;
     position: number;
     potentialClicks: number;
+}
+
+export interface BingLostQuery {
+    query: string;
+    previousClicks: number;
+    previousImpressions: number;
+    previousPosition: number;
+    currentClicks: number;
+    currentImpressions: number;
+    currentPosition: number;
+    lostClicks: number;
+}
+
+export interface BingBrandVsNonBrandMetrics {
+    segment: 'Brand' | 'Non-Brand';
+    clicks: number;
+    impressions: number;
+    ctr: number;
+    position: number;
+    queryCount: number;
 }
 
 /**
@@ -115,16 +136,17 @@ export async function findLowCTROpportunities(
  */
 export async function detectCannibalization(
     siteUrl: string,
-    options: { minImpressions?: number; limit?: number } = {}
+    options: { minImpressions?: number; limit?: number; startDate?: string; endDate?: string } = {},
+    rows?: BingQueryPageStats[]
 ): Promise<any[]> {
-    const { minImpressions = 50, limit = 30 } = options;
+    const { minImpressions = 50, limit = 30, startDate, endDate } = options;
 
-    const rows = await getQueryPageStats(siteUrl);
+    const stats = rows || await getQueryPageStats(siteUrl, startDate, endDate);
 
     // Group by query
     const queryMap = new Map<string, any[]>();
 
-    for (const row of rows) {
+    for (const row of stats) {
         if (row.Impressions < minImpressions) continue;
 
         if (!queryMap.has(row.Query)) {
@@ -170,20 +192,134 @@ export async function detectCannibalization(
 }
 
 /**
+ * Identify queries that have lost significant visibility or clicks compared to the previous period.
+ */
+export async function findLostQueries(
+    siteUrl: string,
+    options: { days?: number; limit?: number } = {}
+): Promise<BingLostQuery[]> {
+    const { days = 28, limit = 50 } = options;
+
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() - 2); // Account for data delay
+    const midDate = new Date(endDate);
+    midDate.setDate(midDate.getDate() - days);
+    const startDate = new Date(midDate);
+    startDate.setDate(startDate.getDate() - days);
+
+    const [currentStats, previousStats] = await Promise.all([
+        getQueryStats(siteUrl, midDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]),
+        getQueryStats(siteUrl, startDate.toISOString().split('T')[0], midDate.toISOString().split('T')[0])
+    ]);
+
+    const currentMap = new Map<string, BingQueryStats>();
+    for (const row of currentStats) {
+        currentMap.set(row.Query, row);
+    }
+
+    const lostQueries: BingLostQuery[] = [];
+
+    for (const prev of previousStats) {
+        if (prev.Clicks < 5) continue; // Ignore low volume noise
+
+        const curr = currentMap.get(prev.Query);
+        const currClicks = curr ? curr.Clicks : 0;
+
+        // Definition of lost: >80% drop or zero
+        if (currClicks === 0 || (currClicks / prev.Clicks) < 0.2) {
+            lostQueries.push({
+                query: prev.Query,
+                previousClicks: prev.Clicks,
+                previousImpressions: prev.Impressions,
+                previousPosition: prev.AvgPosition,
+                currentClicks: currClicks,
+                currentImpressions: curr ? curr.Impressions : 0,
+                currentPosition: curr ? curr.AvgPosition : 0,
+                lostClicks: prev.Clicks - currClicks
+            });
+        }
+    }
+
+    return lostQueries
+        .sort((a, b) => b.lostClicks - a.lostClicks)
+        .slice(0, limit);
+}
+
+/**
+ * Segment search performance into Brand and Non-Brand categories.
+ */
+export async function analyzeBrandVsNonBrand(
+    siteUrl: string,
+    brandRegexString: string,
+    options: { days?: number } = {}
+): Promise<BingBrandVsNonBrandMetrics[]> {
+    const { days = 28 } = options;
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() - 2);
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - days);
+
+    const rows = await getQueryStats(siteUrl, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]);
+
+    const queries = rows.map(r => r.Query);
+    const isBrandResults = safeTestBatch(brandRegexString, 'i', queries);
+
+    const brandStats = { clicks: 0, impressions: 0, weightedPos: 0, queryCount: 0 };
+    const nonBrandStats = { clicks: 0, impressions: 0, weightedPos: 0, queryCount: 0 };
+
+    rows.forEach((row, index) => {
+        const isBrand = isBrandResults[index];
+        const stats = isBrand ? brandStats : nonBrandStats;
+
+        stats.clicks += row.Clicks;
+        stats.impressions += row.Impressions;
+        stats.weightedPos += row.AvgPosition * row.Impressions;
+        stats.queryCount++;
+    });
+
+    const calc = (stats: typeof brandStats, segment: 'Brand' | 'Non-Brand'): BingBrandVsNonBrandMetrics => ({
+        segment,
+        clicks: stats.clicks,
+        impressions: stats.impressions,
+        ctr: stats.impressions > 0 ? stats.clicks / stats.impressions : 0,
+        position: stats.impressions > 0 ? stats.weightedPos / stats.impressions : 0,
+        queryCount: stats.queryCount
+    });
+
+    return [
+        calc(brandStats, 'Brand'),
+        calc(nonBrandStats, 'Non-Brand')
+    ];
+}
+
+/**
  * Generate prioritized Bing SEO recommendations.
  */
 export async function generateRecommendations(
-    siteUrl: string
+    siteUrl: string,
+    options: { days?: number } = {}
 ): Promise<BingSEOInsight[]> {
+    const { days = 28 } = options;
     const insights: BingSEOInsight[] = [];
 
-    const queryStatsPromise = getQueryStats(siteUrl);
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() - 2);
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - days);
+
+    const sDate = startDate.toISOString().split('T')[0];
+    const eDate = endDate.toISOString().split('T')[0];
+
+    const [queryStats, queryPageStats] = await Promise.all([
+        getQueryStats(siteUrl, sDate, eDate),
+        getQueryPageStats(siteUrl, sDate, eDate)
+    ]);
 
     const [lowHangingFruit, strikingDistance, lowCTR, cannibalization] = await Promise.all([
-        queryStatsPromise.then(stats => findLowHangingFruit(siteUrl, { limit: 10, queryStats: stats })),
-        queryStatsPromise.then(stats => findStrikingDistance(siteUrl, { limit: 10, queryStats: stats })),
-        queryStatsPromise.then(stats => findLowCTROpportunities(siteUrl, { limit: 10, queryStats: stats })),
-        detectCannibalization(siteUrl, { limit: 10 })
+        findLowHangingFruit(siteUrl, { limit: 10, queryStats: queryStats }),
+        findStrikingDistance(siteUrl, { limit: 10, queryStats: queryStats }),
+        findLowCTROpportunities(siteUrl, { limit: 10, queryStats: queryStats }),
+        detectCannibalization(siteUrl, { limit: 10, startDate: sDate, endDate: eDate }, queryPageStats)
     ]);
 
     if (lowHangingFruit.length > 0) {
