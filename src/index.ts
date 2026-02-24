@@ -55,6 +55,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { getStartedHandler, getStartedToolName, getStartedToolDescription, getStartedToolSchema } from "./common/tools/get-started.js";
 import { registerPrompts } from "./prompts/index.js";
+import { jsonToCsv } from "./common/utils/csv.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -299,11 +300,32 @@ server.tool(
       dimension: z.string(),
       operator: z.string(),
       expression: z.string()
-    })).optional().describe("Filters (dimension: query/page/country/device, operator: equals/contains/notContains/includingRegex/excludingRegex)")
+    })).optional().describe("Filters (dimension: query/page/country/device, operator: equals/contains/notContains/includingRegex/excludingRegex)"),
+    format: z.enum(["json", "csv"]).optional().describe("Output format (default: json)")
   },
   async (args) => {
     try {
       const result = await analytics.queryAnalytics(args);
+
+      if (args.format === 'csv') {
+        const flatData = result.map(row => {
+          const newRow: any = { ...row };
+          if (row.keys && Array.isArray(row.keys)) {
+            row.keys.forEach((keyVal, idx) => {
+              const dimName = args.dimensions && args.dimensions[idx]
+                ? args.dimensions[idx]
+                : `dimension_${idx + 1}`;
+              newRow[dimName] = keyVal;
+            });
+            delete newRow.keys;
+          }
+          return newRow;
+        });
+        return {
+          content: [{ type: "text", text: jsonToCsv(flatData) }]
+        };
+      }
+
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1123,11 +1145,26 @@ server.tool(
   "bing_analytics_query",
   "Get query performance stats from Bing Webmaster Tools (Top Queries)",
   {
-    siteUrl: z.string().describe("The URL of the site")
+    siteUrl: z.string().describe("The URL of the site"),
+    startDate: z.string().optional().describe("Start date (YYYY-MM-DD)"),
+    endDate: z.string().optional().describe("End date (YYYY-MM-DD)"),
+    limit: z.number().optional().describe("Max rows to return (default: 1000)"),
+    format: z.enum(["json", "csv"]).optional().describe("Output format (default: json)")
   },
-  async ({ siteUrl }) => {
+  async ({ siteUrl, startDate, endDate, limit, format }) => {
     try {
-      const results = await bingAnalytics.getQueryStats(siteUrl);
+      let results = await bingAnalytics.getQueryStats(siteUrl, startDate, endDate);
+
+      if (limit) {
+        results = results.slice(0, limit);
+      }
+
+      if (format === 'csv') {
+        return {
+          content: [{ type: "text", text: jsonToCsv(results) }]
+        };
+      }
+
       return {
         content: [{ type: "text", text: JSON.stringify(results, null, 2) }]
       };
@@ -1629,11 +1666,17 @@ server.tool(
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
     pagePath: z.string().optional().describe("Filter by specific page path"),
-    limit: z.number().optional().describe("Max rows (default 50)")
+    limit: z.number().optional().describe("Max rows (default 50)"),
+    format: z.enum(["json", "csv"]).optional().describe("Output format (default: json)")
   },
-  async ({ propertyId, accountId, startDate, endDate, pagePath, limit }) => {
+  async ({ propertyId, accountId, startDate, endDate, pagePath, limit, format }) => {
     try {
       const result = await ga4Analytics.getPagePerformance(propertyId, startDate, endDate, pagePath, limit, accountId);
+      if (format === 'csv') {
+        return {
+          content: [{ type: "text", text: jsonToCsv(result) }]
+        };
+      }
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
