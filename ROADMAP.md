@@ -145,12 +145,27 @@ This document outlines the planned features and improvements for this project.
   - `brand_analysis` - Brand share across all platforms
   - `analytics_pagespeed_correlation` - Correlate Core Web Vitals with GA4 engagement metrics
 
+### v1.13.1 - Performance & Export
+
+- **In-Memory Configuration Caching**:
+  - Implemented a caching layer for `loadConfig` providing ~5000x speedup for subsequent calls.
+  - Automatic cache synchronization on `saveConfig`.
+- **CSV Export Capabilities**:
+  - Added `format: "csv"` support to `analytics_query`, `bing_analytics_query`, and `analytics_page_performance`.
+  - Robust CSV formatting with proper escaping for special characters.
+- **Bing SEO Insights Expansion**:
+  - `bing_seo_lost_queries` - Identify queries with significant traffic loss on Bing.
+  - `bing_brand_analysis` - Performance segmentation between Brand vs. Non-Brand for Bing.
+  - Optimized `generateRecommendations` for Bing with parallel request execution.
+- **Enhanced Bing Analytics**:
+  - Added `startDate`, `endDate`, and `limit` parameters to `bing_analytics_query`.
+
 ---
 
 ## 🚧 In Progress
 
-- **Performance Optimizations**: Reduce API footprint in SEO intelligence tools
-- **Export Capabilities**: Initial work on CSV/JSON export formats
+- **Performance Optimizations**: Further reducing API footprint across all insight modules.
+- **Enhanced Documentation**: Mintlify-driven user guides and cross-platform strategies.
 
 ---
 
