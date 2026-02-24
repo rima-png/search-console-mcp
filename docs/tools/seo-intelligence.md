@@ -27,6 +27,16 @@ Uses statistical methods (Z-scores or threshold breaches) to find daily spikes o
 *   **Problem:** Manual monitoring misses small but significant shifts.
 *   **Resolution:** Proactive alerts about algorithm updates or tracking issues.
 
+### `seo_lost_queries` (Google & Bing)
+Identifies queries that have lost significant traffic or visibility (e.g. >80% drop) compared to the previous period.
+*   **Problem:** High-value keywords are slipping through the cracks without notice.
+*   **Resolution:** Re-optimize content to regain lost rankings.
+
+### `seo_brand_vs_nonbrand` (Google & Bing)
+Segments your search performance into "Brand" and "Non-Brand" categories using regex pattern matching.
+*   **Problem:** Branded traffic masks the true growth (or decline) of your SEO efforts.
+*   **Resolution:** Measure organic growth by focusing on non-branded keywords.
+
 ## Example Agent Prompts
 
 #### 1. Strategic Planning
