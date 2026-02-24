@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { loadConfig, saveConfig, updateAccount, removeAccount, AccountConfig, AppConfig } from '../src/common/auth/config.js';
+import { loadConfig, saveConfig, updateAccount, removeAccount, AccountConfig, AppConfig, resetConfigCache } from '../src/common/auth/config.js';
 import * as fs from 'fs';
 
 // Mock dependencies
@@ -20,6 +20,7 @@ describe('Auth Config', () => {
     let mockFS: Record<string, string> = {};
 
     beforeEach(() => {
+        resetConfigCache();
         vi.clearAllMocks();
         mockFS = {};
         delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
@@ -105,6 +106,9 @@ describe('Auth Config', () => {
         await saveConfig(legacyData as any);
         vi.mocked(fs.writeFileSync).mockImplementation(originalWrite as any);
 
+        // Reset cache because saveConfig polluted it with legacy data structure
+        resetConfigCache();
+
         mockFS = { 'tokens.enc': encryptedLegacy };
         delete mockFS['config.enc'];
 
@@ -189,5 +193,20 @@ describe('Auth Config', () => {
         mockFS['tokens.json'] = 'corrupt-json';
         const config = await loadConfig();
         expect(config.accounts).toEqual({});
+    });
+
+    it('should cache config after loading from disk', async () => {
+        await saveConfig(mockConfig);
+        resetConfigCache(); // Clear cache to force load from disk
+
+        // First load
+        await loadConfig();
+        expect(fs.readFileSync).toHaveBeenCalled();
+
+        // Second load
+        vi.mocked(fs.readFileSync).mockClear();
+        const config = await loadConfig();
+        expect(fs.readFileSync).not.toHaveBeenCalled();
+        expect(config).toEqual(mockConfig);
     });
 });
