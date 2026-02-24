@@ -5,7 +5,7 @@ import { getUrlSubmissionQuota } from '../src/bing/tools/url-submission.js';
 import { getUrlInfo } from '../src/bing/tools/inspection.js';
 import { listSitemaps } from '../src/bing/tools/sitemaps.js';
 import { healthCheck } from '../src/bing/tools/sites-health.js';
-import { findLowHangingFruit, generateRecommendations } from '../src/bing/tools/seo-insights.js';
+import { findLowHangingFruit, generateRecommendations, findLostQueries, analyzeBrandVsNonBrand } from '../src/bing/tools/seo-insights.js';
 import { getTimeSeriesInsights } from '../src/bing/tools/advanced-analytics.js';
 
 if (process.env.CI) {
@@ -59,6 +59,14 @@ async function runLiveTest() {
         console.log('Step 8: Generating SEO Recommendations...');
         const recs = await generateRecommendations(siteUrl);
         console.log(`✅ Generated ${recs.length} prioritized insights.\n`);
+
+        console.log('Step 8a: Finding Lost Queries...');
+        const lostQueries = await findLostQueries(siteUrl, { days: 28 });
+        console.log(`✅ Found ${lostQueries.length} lost queries.\n`);
+
+        console.log('Step 8b: Performing Brand vs Non-Brand Analysis...');
+        const brandAnalysis = await analyzeBrandVsNonBrand(siteUrl, 'brand', { days: 28 });
+        console.log(`✅ Brand Analysis: ${brandAnalysis.length} segments.\n`);
 
         // 6. Inspection & Quotas
         console.log('Step 9: Checking URL Submission Quota...');

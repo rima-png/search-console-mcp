@@ -11,7 +11,7 @@ Search Console MCP includes full support for **Bing Webmaster Tools**. You can a
 Query your Bing search data the same way you would with Google — clicks, impressions, CTR, and position by keyword, page, country, or device.
 
 ### SEO Opportunities
-Find low-hanging fruit keywords on Bing, get prioritized SEO recommendations, and detect keyword cannibalization — all tuned for Bing's ranking behavior.
+Find low-hanging fruit keywords on Bing, get prioritized SEO recommendations, identify **lost queries**, and analyze **brand vs non-brand** performance — all tuned for Bing's ranking behavior.
 
 ### Crawl Monitoring
 See what Bing's crawler is finding on your site — broken pages, redirect chains, and other crawl issues that could hurt your rankings.

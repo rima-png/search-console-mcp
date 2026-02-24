@@ -179,7 +179,7 @@ This MCP server implements a multi-layered security architecture:
 | `analytics_drop_attribution` | **[NEW]** Attribute traffic drops to mobile/desktop or correlate with known Google Algorithm Updates. |
 | `analytics_time_series` | **[NEW]** Advanced time series with rolling averages, seasonality detection, and forecasting. |
 | `analytics_compare_periods` | Compare two date ranges (e.g., WoW, MoM). |
-| `seo_brand_vs_nonbrand` | **[NEW]** Analyze performance split between Brand vs Non-Brand traffic. |
+| `seo_brand_vs_nonbrand` | **[NEW]** Analyze performance split between Brand vs Non-Brand traffic. (Supports Google & Bing). |
 
 ### SEO Opportunities (Opinionated)
 | Tool | Description |
@@ -188,7 +188,7 @@ This MCP server implements a multi-layered security architecture:
 | `seo_striking_distance` | **[NEW]** Find keywords ranking 8-15 (Quickest ROI wins). |
 | `seo_low_ctr_opportunities` | **[NEW]** Find top ranking queries (pos 1-10) with poor CTR. |
 | `seo_cannibalization` | **[Enhanced]** Detect pages competing for the same query with traffic conflict. |
-| `seo_lost_queries` | **[NEW]** Identify queries that lost all traffic in the last 28 days. |
+| `seo_lost_queries` | **[NEW]** Identify queries that lost all traffic in the last 28 days. (Supports Google & Bing). |
 
 ### SEO Primitives (Atoms for Agents)
 These are low-level tools designed to be used by other AI agents to build complex logic.
@@ -226,6 +226,8 @@ These are low-level tools designed to be used by other AI agents to build comple
 | `bing_crawl_issues` | List crawl issues detected by Bing. |
 | `bing_analytics_detect_anomalies` | Detect daily spikes or drops in Bing traffic. |
 | `bing_analytics_time_series` | Advanced time series analysis for Bing. |
+| `bing_seo_lost_queries` | Identify queries that lost significant traffic on Bing. |
+| `bing_brand_analysis` | Analyze performance split between Brand vs Non-Brand traffic on Bing. |
 | `bing_sitemaps_list` / `bing_sitemaps_submit` | Manage sitemaps in Bing. |
 
 ### Google Analytics 4 (GA4)
