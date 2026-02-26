@@ -233,7 +233,12 @@ export async function getTimeSeriesInsights(
     });
 
     // Handle data parsing and grouping
-    let data = rows.map(r => {
+    let data: {
+        date: string;
+        dimensions: Record<string, string>;
+        metrics: Record<string, number>;
+        original?: any;
+    }[] = rows.map(r => {
         const dimObj: Record<string, string> = {};
         dimensions.forEach((d, i) => {
             if (d !== 'date') dimObj[d] = r.keys?.[i] || '';
@@ -247,40 +252,75 @@ export async function getTimeSeriesInsights(
         return {
             date: r.keys?.[dimensions.indexOf('date')] || '',
             dimensions: dimObj,
-            metrics: metricObj
+            metrics: metricObj,
+            original: r
         };
     }).sort((a, b) => a.date.localeCompare(b.date));
 
     // Support weekly granularity
     if (granularity === 'weekly') {
-        const weeklyData: Record<string, typeof data[0]> = {};
+        const weeklyData: Record<string, {
+            date: string;
+            dimensions: Record<string, string>;
+            metrics: Record<string, number>;
+            accumulators: { clicks: number; impressions: number; weightedPos: number; count: number; };
+        }> = {};
+
         data.forEach(d => {
             const date = new Date(d.date);
-            const day = date.getDay();
-            const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
-            const monday = new Date(date.setDate(diff));
+            const day = date.getUTCDay();
+            const diff = date.getUTCDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+            const monday = new Date(date);
+            monday.setUTCDate(diff);
             const weekKey = monday.toISOString().split('T')[0];
 
             if (!weeklyData[weekKey]) {
+                const initMetrics: Record<string, number> = {};
+                metrics.forEach(m => initMetrics[m] = 0);
                 weeklyData[weekKey] = {
                     date: weekKey,
                     dimensions: d.dimensions,
-                    metrics: { ...d.metrics }
+                    metrics: initMetrics,
+                    accumulators: { clicks: 0, impressions: 0, weightedPos: 0, count: 0 }
                 };
-            } else {
-                metrics.forEach(m => {
-                    if (m === 'position') {
-                        // For average position, we might need a weighted average, but simple average for now
-                        weeklyData[weekKey].metrics[m] = (weeklyData[weekKey].metrics[m] + d.metrics[m]) / 2;
-                    } else if (m === 'ctr') {
-                        weeklyData[weekKey].metrics[m] = (weeklyData[weekKey].metrics[m] + d.metrics[m]) / 2;
-                    } else {
-                        weeklyData[weekKey].metrics[m] += d.metrics[m];
-                    }
-                });
             }
+
+            // Accumulate raw values
+            const entry = weeklyData[weekKey];
+            const r = d.original;
+            const clicks = r.clicks ?? 0;
+            const impressions = r.impressions ?? 0;
+            const position = r.position ?? 0;
+
+            entry.accumulators.clicks += clicks;
+            entry.accumulators.impressions += impressions;
+            entry.accumulators.weightedPos += (position * impressions);
+            entry.accumulators.count += 1;
         });
-        data = Object.values(weeklyData).sort((a, b) => a.date.localeCompare(b.date));
+
+        // Compute final weekly metrics
+        data = Object.values(weeklyData).map(w => {
+            const m = w.metrics;
+            const acc = w.accumulators;
+
+            const finalClicks = acc.clicks;
+            const finalImpressions = acc.impressions;
+            const finalCtr = finalImpressions > 0 ? finalClicks / finalImpressions : 0;
+            const finalPos = finalImpressions > 0 ? acc.weightedPos / finalImpressions : 0;
+
+            metrics.forEach(metric => {
+                if (metric === 'clicks') m[metric] = finalClicks;
+                else if (metric === 'impressions') m[metric] = finalImpressions;
+                else if (metric === 'ctr') m[metric] = finalCtr;
+                else if (metric === 'position') m[metric] = parseFloat(finalPos.toFixed(2));
+            });
+
+            return {
+                date: w.date,
+                dimensions: w.dimensions,
+                metrics: m
+            };
+        }).sort((a, b) => a.date.localeCompare(b.date));
     }
 
     // 1. Calculate Rolling Averages for EACH metric
