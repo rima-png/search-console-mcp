@@ -86,11 +86,14 @@ describe('Setup Full', () => {
     let configModule: any;
     let googleClient: any;
     let mockAnswers: string[] = [];
+    const originalEnv = { ...process.env };
+    const originalArgv = process.argv;
 
     beforeEach(async () => {
         vi.resetModules();
         vi.clearAllMocks();
         mockAnswers = [];
+        delete process.env.BING_API_KEY;
 
         mockRl.question.mockImplementation((q: string, cb: (a: string) => void) => {
             const answer = mockAnswers.shift() || '';
@@ -108,9 +111,9 @@ describe('Setup Full', () => {
         vi.spyOn(process, 'exit').mockImplementation((() => { throw new Error('Process.exit'); }) as any);
     });
 
-    const originalArgv = process.argv;
     afterEach(() => {
         process.argv = originalArgv;
+        process.env = { ...originalEnv };
         vi.restoreAllMocks();
     });
 
