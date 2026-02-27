@@ -61,6 +61,7 @@
       {
         "group": "Prompts",
         "pages": [
+          "prompts/magic-prompts",
           "prompts/claude",
           "prompts/cursor",
           "prompts/generic-agents",
