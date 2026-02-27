@@ -16,20 +16,20 @@ export function clearAnalyticsCache() {
 
 function generateCacheKey(options: AnalyticsOptions): string {
   const clone = { ...options };
-  // Dimensions order matters because it determines the order of keys in the response.
-  // We should NOT sort them.
-  /*
-  if (clone.dimensions) {
-    clone.dimensions = [...clone.dimensions].sort();
-  }
-  */
   if (clone.filters) {
     clone.filters = [...clone.filters].sort((a, b) =>
       (a.dimension + a.operator + a.expression).localeCompare(b.dimension + b.operator + b.expression)
     );
   }
-  // Sort object keys
-  return JSON.stringify(clone, Object.keys(clone).sort());
+  
+  // We need a stable JSON string for the cache key.
+  // Instead of the broken JSON.stringify(clone, keys) which wipes nested objects,
+  // we manually sort the top-level keys.
+  const sorted: any = {};
+  Object.keys(clone).sort().forEach(key => {
+    sorted[key] = (clone as any)[key];
+  });
+  return JSON.stringify(sorted);
 }
 
 /**
@@ -186,13 +186,16 @@ export async function queryAnalytics(options: AnalyticsOptions): Promise<searchc
       }
 
       if (options.filters && options.filters.length > 0) {
-        requestBody.dimensionFilterGroups = [{
-          filters: options.filters.map(f => ({
+        // We use separate dimensionFilterGroups for each filter to ensure they are joined by AND.
+        // GSC API joins multiple filters within the same group by OR if they share the same dimension.
+        // By putting them in separate groups, we guarantee strict AND behavior for all filters.
+        requestBody.dimensionFilterGroups = options.filters.map(f => ({
+          filters: [{
             dimension: f.dimension,
             operator: f.operator,
             expression: f.expression
-          }))
-        }];
+          }]
+        }));
       }
 
       const res = await client.searchanalytics.query({
