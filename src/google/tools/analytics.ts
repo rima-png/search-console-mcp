@@ -158,6 +158,9 @@ export async function queryAnalytics(options: AnalyticsOptions): Promise<searchc
       return cached;
     }
     if (now - cached.timestamp < CACHE_TTL_MS) {
+      // LRU: Refresh key position
+      analyticsCache.delete(cacheKey);
+      analyticsCache.set(cacheKey, cached);
       return cached.data;
     }
     analyticsCache.delete(cacheKey);
@@ -609,27 +612,32 @@ export async function detectTrends(
   // Split the period into two halves
   const midPoint = Math.floor(days / 2);
 
-  const endDate = new Date();
-  endDate.setDate(endDate.getDate() - DATA_DELAY_DAYS);
+  // Calculate periods ensuring no overlap
+  const currentEndDate = new Date();
+  currentEndDate.setDate(currentEndDate.getDate() - DATA_DELAY_DAYS);
 
-  const midDate = new Date(endDate);
-  midDate.setDate(midDate.getDate() - midPoint);
+  const currentStartDate = new Date(currentEndDate);
+  currentStartDate.setDate(currentStartDate.getDate() - midPoint + 1);
 
-  const startDate = new Date(midDate);
-  startDate.setDate(startDate.getDate() - midPoint);
+  const previousEndDate = new Date(currentStartDate);
+  previousEndDate.setDate(previousEndDate.getDate() - 1);
+
+  const previousStartDate = new Date(previousEndDate);
+  previousStartDate.setDate(previousStartDate.getDate() - midPoint + 1);
+
 
   const [currentPeriod, previousPeriod] = await Promise.all([
     queryAnalytics({
       siteUrl,
-      startDate: midDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
+      startDate: currentStartDate.toISOString().split('T')[0],
+      endDate: currentEndDate.toISOString().split('T')[0],
       dimensions: [dimension],
       limit: 5000 // Get enough data to find trends
     }),
     queryAnalytics({
       siteUrl,
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: midDate.toISOString().split('T')[0],
+      startDate: previousStartDate.toISOString().split('T')[0],
+      endDate: previousEndDate.toISOString().split('T')[0],
       dimensions: [dimension],
       limit: 5000
     })

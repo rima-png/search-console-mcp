@@ -77,6 +77,9 @@ export async function batchQueryAnalytics(options: GA4BatchAnalyticsOptions) {
             return cached.promise;
         }
         if (now - cached.timestamp < CACHE_TTL_MS) {
+            // LRU: Refresh key position
+            analyticsCache.delete(cacheKey);
+            analyticsCache.set(cacheKey, cached);
             return cached.data;
         }
         analyticsCache.delete(cacheKey);
@@ -130,6 +133,9 @@ export async function queryAnalytics(options: GA4AnalyticsOptions) {
             return cached.promise;
         }
         if (now - cached.timestamp < CACHE_TTL_MS) {
+            // LRU: Refresh key position
+            analyticsCache.delete(cacheKey);
+            analyticsCache.set(cacheKey, cached);
             return cached.data;
         }
         analyticsCache.delete(cacheKey);
