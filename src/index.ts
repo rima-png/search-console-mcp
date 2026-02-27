@@ -129,6 +129,27 @@ server.tool(
 );
 
 server.tool(
+  "bing_analytics_trends",
+  "Detect rising or declining trends in Bing query performance",
+  {
+    siteUrl: z.string().describe("The URL of the site"),
+    days: z.number().optional().describe("Number of days to analyze (default 28)"),
+    threshold: z.number().optional().describe("Minimum percentage change (default 10)"),
+    minClicks: z.number().optional().describe("Minimum clicks required (default 100)")
+  },
+  async ({ siteUrl, days, threshold, minClicks }) => {
+    try {
+      const results = await bingAnalytics.detectTrends(siteUrl, { days, threshold, minClicks });
+      return {
+        content: [{ type: "text", text: JSON.stringify(results, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
   "sites_add",
   "Add a new site to Search Console or Bing Webmaster Tools",
   {

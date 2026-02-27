@@ -273,3 +273,122 @@ export async function getPerformanceSummary(siteUrl: string, days = 28): Promise
         endDate: endDate.toISOString().split('T')[0]
     };
 }
+
+export interface BingTrendItem {
+    key: string;
+    metric: 'clicks' | 'impressions';
+    change: number;
+    changePercent: number;
+    trend: 'rising' | 'declining';
+    currentValue: number;
+    previousValue: number;
+}
+
+/**
+ * Detect rising or declining trends in Bing query performance.
+ *
+ * @param siteUrl - The URL of the site to analyze.
+ * @param options - Configuration including lookback period and click thresholds.
+ * @returns A list of queries showing significant momentum.
+ */
+export async function detectTrends(
+    siteUrl: string,
+    options: {
+        days?: number;
+        threshold?: number;
+        minClicks?: number;
+        limit?: number;
+    } = {}
+): Promise<BingTrendItem[]> {
+    const days = options.days || 28;
+    const threshold = options.threshold || 10;
+    const minClicks = options.minClicks || 100;
+    const limit = options.limit || 20;
+
+    const midPoint = Math.floor(days / 2);
+
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() - 2); // Data delay
+
+    const currentEndDate = new Date(endDate);
+
+    const currentStartDate = new Date(currentEndDate);
+    currentStartDate.setDate(currentStartDate.getDate() - midPoint + 1);
+
+    const previousEndDate = new Date(currentStartDate);
+    previousEndDate.setDate(previousEndDate.getDate() - 1);
+
+    const previousStartDate = new Date(previousEndDate);
+    previousStartDate.setDate(previousStartDate.getDate() - midPoint + 1);
+
+    const allStats = await getQueryStats(siteUrl);
+
+    const filterStats = (start: Date, end: Date) => {
+        const map = new Map<string, number>();
+        allStats.forEach(stat => {
+            const d = new Date(stat.Date);
+            if (d >= start && d <= end) {
+                map.set(stat.Query, (map.get(stat.Query) || 0) + stat.Clicks);
+            }
+        });
+        return map;
+    };
+
+    const currentMap = filterStats(currentStartDate, currentEndDate);
+    const previousMap = filterStats(previousStartDate, previousEndDate);
+
+    const trends: BingTrendItem[] = [];
+
+    for (const [query, currClicks] of currentMap.entries()) {
+        const prevClicks = previousMap.get(query) || 0;
+
+        if (currClicks < minClicks && prevClicks < minClicks) continue;
+
+        if (prevClicks > 0) {
+            const change = currClicks - prevClicks;
+            const percent = (change / prevClicks) * 100;
+
+            if (Math.abs(percent) >= threshold) {
+                trends.push({
+                    key: query,
+                    metric: 'clicks',
+                    change,
+                    changePercent: parseFloat(percent.toFixed(2)),
+                    trend: percent > 0 ? 'rising' : 'declining',
+                    currentValue: currClicks,
+                    previousValue: prevClicks
+                });
+            }
+        } else if (currClicks >= minClicks) {
+            // Zero to Hero
+            trends.push({
+                key: query,
+                metric: 'clicks',
+                change: currClicks,
+                changePercent: 100,
+                trend: 'rising',
+                currentValue: currClicks,
+                previousValue: 0
+            });
+        }
+    }
+
+    // Also check for queries that dropped to zero
+    for (const [query, prevClicks] of previousMap.entries()) {
+        if (!currentMap.has(query) && prevClicks >= minClicks) {
+            trends.push({
+                key: query,
+                metric: 'clicks',
+                change: -prevClicks,
+                changePercent: -100,
+                trend: 'declining',
+                currentValue: 0,
+                previousValue: prevClicks
+            });
+        }
+    }
+
+    return trends
+        .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
+        .slice(0, limit);
+}
