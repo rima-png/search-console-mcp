@@ -60,4 +60,28 @@ describe('jsonToCsv', () => {
         const expected = "a,b\n1,\n2,3";
         expect(result).toBe(expected);
     });
+
+    it('collects all unique headers from all objects', () => {
+        const data = [
+            { id: 1, name: 'Alice' },
+            { id: 2, age: 30 }
+        ];
+        const result = jsonToCsv(data);
+        const expected = "id,name,age\n1,Alice,\n2,,30";
+        expect(result).toBe(expected);
+    });
+
+    it('handles non-object rows gracefully without crashing', () => {
+        const data: any[] = [
+            { id: 1, name: 'Alice' },
+            null,
+            { id: 2, name: 'Bob' },
+            "string"
+        ];
+        // Only objects should contribute to keys.
+        // For non-objects or null, `val === undefined || val === null` logic in row map will output ''
+        const result = jsonToCsv(data);
+        const expected = "id,name\n1,Alice\n,\n2,Bob\n,";
+        expect(result).toBe(expected);
+    });
 });

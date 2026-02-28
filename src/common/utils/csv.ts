@@ -7,14 +7,20 @@ export function jsonToCsv(data: Record<string, any>[]): string {
     return "";
   }
 
-  // Get headers from the first object
-  const headers = Object.keys(data[0]);
+  // Get all unique headers from all objects
+  const headerSet = new Set<string>();
+  for (const row of data) {
+    if (row && typeof row === 'object') {
+      Object.keys(row).forEach(key => headerSet.add(key));
+    }
+  }
+  const headers = Array.from(headerSet);
 
   const csvRows = [headers.join(',')];
 
   for (const row of data) {
     const values = headers.map(header => {
-      const val = row[header];
+      const val = row && typeof row === 'object' ? row[header] : undefined;
       const stringVal = val === undefined || val === null ? '' : String(val);
 
       // Escape double quotes by doubling them
