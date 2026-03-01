@@ -1,5 +1,6 @@
 import { getOrganicLandingPages } from './analytics.js';
 import { analyzePageSpeed } from '../../google/tools/pagespeed.js';
+import { limitConcurrency } from '../../common/concurrency.js';
 
 export async function getPageSpeedCorrelation(
     propertyId: string,
@@ -22,9 +23,9 @@ export async function getPageSpeedCorrelation(
     // 1. Get top organic landing pages
     const pages = await getOrganicLandingPages(propertyId, startDate, endDate, limit, accountId);
 
-    // 2. Run PageSpeed on each
-    const results = await Promise.allSettled(
-        pages.map(async (page: any) => {
+    // 2. Run PageSpeed on each with concurrency limit
+    const results = await limitConcurrency(pages, 5, async (page: any) => {
+        try {
             const path = page.landingPagePlusQueryString || page.pagePath;
             if (!path) throw new Error("No page path found");
 
@@ -35,18 +36,13 @@ export async function getPageSpeedCorrelation(
                 ...page,
                 pageSpeed: psiResult
             };
-        })
-    );
-
-    // 3. Merge
-    return results.map((res, index) => {
-        if (res.status === 'fulfilled') {
-            return res.value;
-        } else {
+        } catch (error: any) {
             return {
-                ...pages[index],
-                pageSpeedError: res.reason?.message || "Failed to analyze"
+                ...page,
+                pageSpeedError: error.message || "Failed to analyze"
             };
         }
     });
+
+    return results;
 }
