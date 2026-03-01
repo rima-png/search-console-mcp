@@ -129,6 +129,64 @@ server.tool(
 );
 
 server.tool(
+  "bing_seo_cannibalization",
+  "Detect pages competing for the same query in Bing.",
+  {
+    siteUrl: z.string().describe("The URL of the site"),
+    minImpressions: z.number().optional().describe("Minimum impressions threshold (default 50)")
+  },
+  async ({ siteUrl, minImpressions }) => {
+    try {
+      const results = await bingSeoInsights.detectCannibalization(siteUrl, { minImpressions });
+      return {
+        content: [{ type: "text", text: JSON.stringify(results, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "bing_seo_lost_queries",
+  "Identify queries that lost significant traffic on Bing compared to the previous period.",
+  {
+    siteUrl: z.string().describe("The URL of the site"),
+    days: z.number().optional().describe("Lookback period in days (default 28)")
+  },
+  async ({ siteUrl, days }) => {
+    try {
+      const results = await bingSeoInsights.findLostQueries(siteUrl, { days });
+      return {
+        content: [{ type: "text", text: JSON.stringify(results, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
+  "bing_brand_analysis",
+  "Analyze Brand vs Non-Brand performance on Bing.",
+  {
+    siteUrl: z.string().describe("The URL of the site"),
+    brandRegex: z.string().describe("Regex matching brand terms (e.g. 'acme|acmecorp')"),
+    days: z.number().optional().describe("Number of days to analyze (default 28)")
+  },
+  async ({ siteUrl, brandRegex, days }) => {
+    try {
+      const results = await bingSeoInsights.analyzeBrandVsNonBrand(siteUrl, brandRegex, { days });
+      return {
+        content: [{ type: "text", text: JSON.stringify(results, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
+
+server.tool(
   "bing_analytics_trends",
   "Detect rising or declining trends in Bing query performance",
   {
