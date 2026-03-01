@@ -36,6 +36,7 @@ import { loadConfig, removeAccount, updateAccount, AccountConfig } from './commo
 import { resolveAccount } from './common/auth/resolver.js';
 import { getSearchConsoleClient } from './google/client.js';
 import { getBingClient } from './bing/client.js';
+import { limitConcurrency } from './common/concurrency.js';
 import {
   bingApiDocs,
   indexNowDocs,
@@ -99,25 +100,24 @@ server.tool(
         return { content: [{ type: "text", text: JSON.stringify(results, null, 2) }] };
       }
 
-      const allResults = [];
-      for (const account of accounts) {
+      const allResults = await limitConcurrency(accounts, 5, async (account) => {
         try {
           const results = engine === "google"
             ? await sites.listSites(account.id)
             : await bingSites.listSites(account.id);
-          allResults.push({
+          return {
             account: account.alias,
             accountId: account.id,
             sites: results
-          });
+          };
         } catch (e) {
-          allResults.push({
+          return {
             account: account.alias,
             accountId: account.id,
             error: (e as Error).message
-          });
+          };
         }
-      }
+      });
 
       return {
         content: [{ type: "text", text: JSON.stringify(allResults, null, 2) }]
