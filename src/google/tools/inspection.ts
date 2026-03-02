@@ -15,7 +15,7 @@ export async function inspectUrl(
   inspectionUrl: string,
   languageCode: string = 'en-US'
 ): Promise<searchconsole_v1.Schema$InspectUrlIndexResponse> {
-  const client = await getSearchConsoleClient();
+  const client = await getSearchConsoleClient(siteUrl);
   const res = await client.urlInspection.index.inspect({
     requestBody: {
       inspectionUrl,

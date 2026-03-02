@@ -199,6 +199,21 @@ describe('Google Client', () => {
             }));
         });
 
+        it('should call resolveAccount with siteUrl', async () => {
+            const siteUrl = 'https://example.com';
+            vi.mocked(resolverModule.resolveAccount).mockResolvedValue({
+                id: 'google_123',
+                engine: 'google',
+                alias: 'test',
+                tokens: { access_token: 'valid', expiry_date: Date.now() + 10000 }
+            });
+            vi.mocked(configModule.loadConfig).mockResolvedValue({ accounts: {} });
+
+            await getSearchConsoleClient(siteUrl);
+
+            expect(resolverModule.resolveAccount).toHaveBeenCalledWith(siteUrl, 'google');
+        });
+
         it('should throw if authentication fails/missing', async () => {
             vi.mocked(resolverModule.resolveAccount).mockResolvedValue({
                 id: 'none',

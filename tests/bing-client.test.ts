@@ -234,6 +234,8 @@ describe('Bing Client', () => {
             const client = await getBingClient('https://resolved.com');
             fetchMock.mockResolvedValue({ ok: true, json: async () => ({ d: [] }) });
             await client.getSiteList();
+
+            expect(resolverModule.resolveAccount).toHaveBeenCalledWith('https://resolved.com', 'bing');
             expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('apikey=api-key-resolved'), expect.anything());
         });
 

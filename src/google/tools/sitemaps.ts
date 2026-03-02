@@ -8,7 +8,7 @@ import { searchconsole_v1 } from 'googleapis';
  * @returns A list of sitemap metadata objects.
  */
 export async function listSitemaps(siteUrl: string): Promise<searchconsole_v1.Schema$WmxSitemap[]> {
-  const client = await getSearchConsoleClient();
+  const client = await getSearchConsoleClient(siteUrl);
   const res = await client.sitemaps.list({ siteUrl });
   return res.data.sitemap || [];
 }
@@ -21,7 +21,7 @@ export async function listSitemaps(siteUrl: string): Promise<searchconsole_v1.Sc
  * @returns A success message.
  */
 export async function submitSitemap(siteUrl: string, feedpath: string): Promise<string> {
-  const client = await getSearchConsoleClient();
+  const client = await getSearchConsoleClient(siteUrl);
   await client.sitemaps.submit({ siteUrl, feedpath });
   return `Successfully submitted sitemap: ${feedpath} for ${siteUrl}`;
 }
@@ -34,7 +34,7 @@ export async function submitSitemap(siteUrl: string, feedpath: string): Promise<
  * @returns A success message.
  */
 export async function deleteSitemap(siteUrl: string, feedpath: string): Promise<string> {
-  const client = await getSearchConsoleClient();
+  const client = await getSearchConsoleClient(siteUrl);
   await client.sitemaps.delete({ siteUrl, feedpath });
   return `Successfully deleted sitemap: ${feedpath} from ${siteUrl}`;
 }
@@ -47,7 +47,7 @@ export async function deleteSitemap(siteUrl: string, feedpath: string): Promise<
  * @returns Sitemap details including status and item counts.
  */
 export async function getSitemap(siteUrl: string, feedpath: string): Promise<searchconsole_v1.Schema$WmxSitemap> {
-  const client = await getSearchConsoleClient();
+  const client = await getSearchConsoleClient(siteUrl);
   const res = await client.sitemaps.get({ siteUrl, feedpath });
   return res.data;
 }
