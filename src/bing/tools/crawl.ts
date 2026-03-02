@@ -4,7 +4,7 @@ import { getBingClient, BingCrawlIssue, BingCrawlStats } from '../client.js';
  * Get crawl issues for a site.
  */
 export async function getCrawlIssues(siteUrl: string): Promise<BingCrawlIssue[]> {
-    const client = await getBingClient();
+    const client = await getBingClient(siteUrl);
     return client.getCrawlIssues(siteUrl);
 }
 
