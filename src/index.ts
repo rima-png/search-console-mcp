@@ -32,8 +32,9 @@ import * as ga4Behavior from "./ga4/tools/behavior.js";
 import * as ga4PageSpeed from "./ga4/tools/pagespeed.js";
 import * as ga4GscComparator from "./common/tools/compare-engines/ga4-gsc-comparator.js";
 import * as ga4GscBingComparator from "./common/tools/compare-engines/ga4-gsc-bing-comparator.js";
+import * as ga4Properties from "./ga4/tools/properties.js";
 import { loadConfig, removeAccount, updateAccount, AccountConfig } from './common/auth/config.js';
-import { resolveAccount } from './common/auth/resolver.js';
+import { resolveAccount, normalizeWebsite } from './common/auth/resolver.js';
 import { getSearchConsoleClient } from './google/client.js';
 import { getBingClient } from './bing/client.js';
 import { limitConcurrency } from './common/concurrency.js';
@@ -87,8 +88,8 @@ server.tool(
 // Sites Tools
 server.tool(
   "sites_list",
-  "List all verified sites across all authorized accounts",
-  { engine: z.enum(["google", "bing"]).optional().describe("The search engine (default: google)") },
+  "List all verified sites or properties across all authorized accounts",
+  { engine: z.enum(["google", "bing", "ga4"]).optional().describe("The search engine (default: google)") },
   async ({ engine = "google" }) => {
     try {
       const config = await loadConfig();
@@ -102,9 +103,37 @@ server.tool(
 
       const allResults = await limitConcurrency(accounts, 5, async (account) => {
         try {
-          const results = engine === "google"
-            ? await sites.listSites(account.id)
-            : await bingSites.listSites(account.id);
+          let results: any[];
+          if (engine === "google") {
+            results = await sites.listSites(account.id);
+          } else if (engine === "bing") {
+            results = await bingSites.listSites(account.id);
+          } else if (engine === "ga4") {
+            results = await ga4Properties.listProperties(account.id);
+          } else {
+            results = [];
+          }
+
+          // Boundary Filtering: Honor the website in the config
+          if (account.websites && account.websites.length > 0) {
+            results = results.filter(site => {
+              const url = engine === "ga4" ? (site.propertyId) : (site.siteUrl || (site as any).Url);
+              if (!url) return false;
+
+              // If it's a numeric property ID (GA4), check direct inclusion
+              if (engine === "ga4" && /^\d+$/.test(url)) {
+                return account.websites!.includes(url);
+              }
+
+              try {
+                const normalizedSite = normalizeWebsite(url).value;
+                return account.websites!.some(w => normalizeWebsite(w).value === normalizedSite);
+              } catch {
+                return account.websites!.includes(url);
+              }
+            });
+          }
+
           return {
             account: account.alias,
             accountId: account.id,
