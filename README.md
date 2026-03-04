@@ -3,7 +3,7 @@
 
 A Model Context Protocol (MCP) server that transforms how you interact with **Google Search Console**, **Bing Webmaster Tools**, and **Google Analytics 4**. Stop exporting CSVs and start asking questions.
 
-[📚 View Documentation](https://searchconsolemcp.mintlify.app/)
+[📚 View Documentation](https://searchconsolemcp.saurabh.app/)
 
 ---
 
