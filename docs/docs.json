@@ -8,6 +8,11 @@
     "light": "#818CF8",
     "dark": "#312E81"
   },
+  "seo": {
+    "metatags": {
+        "canonical": "https://searchconsolemcp.saurabh.app"
+    }
+}
   "topbarLinks": [
     {
       "name": "GitHub",
