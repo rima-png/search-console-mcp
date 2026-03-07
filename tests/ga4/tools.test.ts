@@ -37,9 +37,11 @@ describe('GA4 Tools', () => {
             }
         );
 
-        const result = await getPagePerformance('123', '2023-01-01', '2023-01-31');
+        const result = await getPagePerformance('123', '2023-01-01', '2023-01-31', undefined, 10, undefined, 20);
 
         expect(mockRunReport).toHaveBeenCalled();
+        expect(mockRunReport.mock.calls[0][0].limit).toBe(10);
+        expect(mockRunReport.mock.calls[0][0].offset).toBe(20);
         expect(result).toEqual([{ pagePath: '/home', sessions: 100 }]);
     });
 

@@ -1784,11 +1784,12 @@ server.tool(
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
     pagePath: z.string().optional().describe("Filter by specific page path"),
     limit: z.number().optional().describe("Max rows (default 50)"),
+    offset: z.number().optional().describe("Starting row for pagination (0-based)"),
     format: z.enum(["json", "csv"]).optional().describe("Output format (default: json)")
   },
-  async ({ propertyId, accountId, startDate, endDate, pagePath, limit, format }) => {
+  async ({ propertyId, accountId, startDate, endDate, pagePath, limit, offset, format }) => {
     try {
-      const result = await ga4Analytics.getPagePerformance(propertyId, startDate, endDate, pagePath, limit, accountId);
+      const result = await ga4Analytics.getPagePerformance(propertyId, startDate, endDate, pagePath, limit, accountId, offset);
       if (format === 'csv') {
         return {
           content: [{ type: "text", text: jsonToCsv(result) }]
@@ -1812,11 +1813,12 @@ server.tool(
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
     channelGroup: z.string().optional().describe("Filter by Channel Group (e.g. 'Organic Search')"),
-    limit: z.number().optional().describe("Max rows (default 50)")
+    limit: z.number().optional().describe("Max rows (default 50)"),
+    offset: z.number().optional().describe("Starting row for pagination (0-based)")
   },
-  async ({ propertyId, accountId, startDate, endDate, channelGroup, limit }) => {
+  async ({ propertyId, accountId, startDate, endDate, channelGroup, limit, offset }) => {
     try {
-      const result = await ga4Analytics.getTrafficSources(propertyId, startDate, endDate, channelGroup, limit, accountId);
+      const result = await ga4Analytics.getTrafficSources(propertyId, startDate, endDate, channelGroup, limit, accountId, offset);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1834,11 +1836,12 @@ server.tool(
     accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
-    limit: z.number().optional().describe("Max rows (default 50)")
+    limit: z.number().optional().describe("Max rows (default 50)"),
+    offset: z.number().optional().describe("Starting row for pagination (0-based)")
   },
-  async ({ propertyId, accountId, startDate, endDate, limit }) => {
+  async ({ propertyId, accountId, startDate, endDate, limit, offset }) => {
     try {
-      const result = await ga4Analytics.getOrganicLandingPages(propertyId, startDate, endDate, limit, accountId);
+      const result = await ga4Analytics.getOrganicLandingPages(propertyId, startDate, endDate, limit, accountId, offset);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1856,11 +1859,12 @@ server.tool(
     accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
-    limit: z.number().optional().describe("Max rows (default 50)")
+    limit: z.number().optional().describe("Max rows (default 50)"),
+    offset: z.number().optional().describe("Starting row for pagination (0-based)")
   },
-  async ({ propertyId, accountId, startDate, endDate, limit }) => {
+  async ({ propertyId, accountId, startDate, endDate, limit, offset }) => {
     try {
-      const result = await ga4Analytics.getContentPerformance(propertyId, startDate, endDate, limit, accountId);
+      const result = await ga4Analytics.getContentPerformance(propertyId, startDate, endDate, limit, accountId, offset);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
@@ -1878,11 +1882,12 @@ server.tool(
     accountId: z.string().optional().describe("GA4 account ID for multi-account setups"),
     startDate: z.string().describe("Start date (YYYY-MM-DD)"),
     endDate: z.string().describe("End date (YYYY-MM-DD)"),
-    limit: z.number().optional().describe("Max rows (default 50)")
+    limit: z.number().optional().describe("Max rows (default 50)"),
+    offset: z.number().optional().describe("Starting row for pagination (0-based)")
   },
-  async ({ propertyId, accountId, startDate, endDate, limit }) => {
+  async ({ propertyId, accountId, startDate, endDate, limit, offset }) => {
     try {
-      const result = await ga4Analytics.getEcommerce(propertyId, startDate, endDate, limit, accountId);
+      const result = await ga4Analytics.getEcommerce(propertyId, startDate, endDate, limit, accountId, offset);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
