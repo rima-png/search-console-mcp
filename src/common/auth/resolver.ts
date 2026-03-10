@@ -54,14 +54,19 @@ export async function resolveAccount(siteUrl: string, engine: EngineType): Promi
 
     // 2. Domain Match (if target is a URL prefix and we have a domain boundary)
     if (normalizedTarget.type === 'url-prefix') {
-        const targetHost = new URL(siteUrl).hostname.toLowerCase();
-        const domainMatch = accounts.find(a =>
-            a.websites?.some(w => {
-                const nw = normalizeWebsite(w);
-                return nw.type === 'domain' && (targetHost === nw.value || targetHost.endsWith('.' + nw.value));
-            })
-        );
-        if (domainMatch) return domainMatch;
+        try {
+            const targetHost = new URL(siteUrl).hostname.toLowerCase();
+            const domainMatch = accounts.find(a =>
+                a.websites?.some(w => {
+                    const nw = normalizeWebsite(w);
+                    return nw.type === 'domain' && (targetHost === nw.value || targetHost.endsWith('.' + nw.value));
+                })
+            );
+            if (domainMatch) return domainMatch;
+        } catch (error) {
+            // If the URL is invalid, we can't do a domain match.
+            // Just skip to the next resolution step.
+        }
     }
 
     // 3. Global Accounts (Empty websites list)

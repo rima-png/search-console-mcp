@@ -84,6 +84,21 @@ describe('Multi-Account Resolution & Boundaries', () => {
             }
         });
 
+        it('should handle invalid URLs gracefully when doing domain match', async () => {
+            vi.mocked(loadConfig).mockResolvedValue(mockConfig as any);
+            try {
+                // "invalid-url/prefix" is considered a url-prefix by normalizeWebsite,
+                // but new URL("invalid-url/prefix") will throw an error.
+                await resolveAccount('invalid-url/prefix', 'bing');
+                expect.fail('Should have thrown error');
+            } catch (error: any) {
+                // It should not crash with "TypeError: Invalid URL", it should throw FORBIDDEN
+                // because it's not matching any boundary and no global bing account exists
+                expect(error.message).toContain('Access restricted');
+                expect(error.code).toBe('FORBIDDEN');
+            }
+        });
+
         it('should throw AMBIGUOUS error if multiple global accounts for same engine', async () => {
             const ambiguousConfig = {
                 accounts: {
