@@ -71,6 +71,11 @@ export async function resolveAccount(siteUrl: string, engine: EngineType): Promi
         return globalAccounts[0];
     }
 
+    // Single account fallback: If no siteUrl requested and only one account exists, use it.
+    if (!siteUrl && accounts.length === 1) {
+        return accounts[0];
+    }
+
     if (globalAccounts.length > 1) {
         const error = new Error(`Multiple ${engine} accounts found. Please specify an account boundary or remove unused accounts.`) as ResolutionError;
         error.code = 'AMBIGUOUS';

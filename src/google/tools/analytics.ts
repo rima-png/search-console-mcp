@@ -1,5 +1,6 @@
 import { getSearchConsoleClient } from '../client.js';
 import { searchconsole_v1 } from 'googleapis';
+import { logger } from '../../utils/logger.js';
 
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds
 const MAX_CACHE_SIZE = 100;
@@ -21,7 +22,7 @@ function generateCacheKey(options: AnalyticsOptions): string {
       (a.dimension + a.operator + a.expression).localeCompare(b.dimension + b.operator + b.expression)
     );
   }
-  
+
   // We need a stable JSON string for the cache key.
   // Instead of the broken JSON.stringify(clone, keys) which wipes nested objects,
   // we manually sort the top-level keys.
@@ -155,9 +156,11 @@ export async function queryAnalytics(options: AnalyticsOptions): Promise<searchc
 
   if (cached) {
     if ('then' in cached) {
+      logger.debug(`Cache hit (pending) for ${options.siteUrl}`);
       return cached;
     }
     if (now - cached.timestamp < CACHE_TTL_MS) {
+      logger.debug(`Cache hit (fresh) for ${options.siteUrl}`);
       // LRU: Refresh key position
       analyticsCache.delete(cacheKey);
       analyticsCache.set(cacheKey, cached);
@@ -172,7 +175,7 @@ export async function queryAnalytics(options: AnalyticsOptions): Promise<searchc
       const requestBody: searchconsole_v1.Schema$SearchAnalyticsQueryRequest = {
         startDate: options.startDate,
         endDate: options.endDate,
-        dimensions: options.dimensions || [],
+        dimensions: (options.dimensions && options.dimensions.length > 0) ? options.dimensions : undefined,
         type: options.type || 'web',
         aggregationType: options.aggregationType || 'auto',
         dataState: options.dataState || 'final',
@@ -198,12 +201,20 @@ export async function queryAnalytics(options: AnalyticsOptions): Promise<searchc
         }));
       }
 
+      logger.debug(`Fetching analytics for ${options.siteUrl}`, {
+        startDate: options.startDate,
+        endDate: options.endDate,
+        dimensions: options.dimensions,
+        filters: options.filters?.length || 0
+      });
+
       const res = await client.searchanalytics.query({
         siteUrl: options.siteUrl,
         requestBody
       });
 
       const rows = res.data.rows || [];
+      logger.debug(`Received ${rows.length} rows for ${options.siteUrl}`);
 
       analyticsCache.set(cacheKey, {
         data: rows,
@@ -218,6 +229,7 @@ export async function queryAnalytics(options: AnalyticsOptions): Promise<searchc
 
       return rows;
     } catch (error) {
+      logger.error(`Error fetching analytics for ${options.siteUrl}:`, (error as Error).message);
       analyticsCache.delete(cacheKey);
       throw error;
     }
@@ -236,7 +248,7 @@ export async function queryAnalytics(options: AnalyticsOptions): Promise<searchc
  * @returns Combined metrics for the requested period.
  */
 export async function getPerformanceSummary(siteUrl: string, days: number = 28): Promise<PerformanceSummary> {
-  const DATA_DELAY_DAYS = 3;
+  const DATA_DELAY_DAYS = 1; // Use 1 day delay with 'all' dataState (fresh data)
 
   const endDate = new Date();
   endDate.setDate(endDate.getDate() - DATA_DELAY_DAYS);
@@ -251,6 +263,7 @@ export async function getPerformanceSummary(siteUrl: string, days: number = 28):
     siteUrl,
     startDate: startDateStr,
     endDate: endDateStr,
+    dataState: 'all',
     limit: 1
   });
 

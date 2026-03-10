@@ -2,6 +2,7 @@ import { google, searchconsole_v1 } from 'googleapis';
 import nodeMachineId from 'node-machine-id';
 import { AccountConfig, loadConfig, saveConfig, updateAccount, removeAccount } from '../common/auth/config.js';
 import { resolveAccount } from '../common/auth/resolver.js';
+import { logger } from '../utils/logger.js';
 const { machineIdSync } = nodeMachineId;
 
 const SCOPES = [
@@ -35,8 +36,11 @@ export async function getSearchConsoleClient(siteUrl?: string, accountId?: strin
 
   const cacheKey = account.id;
   if (cachedClientMap[cacheKey]) {
+    logger.debug(`Using cached client for account: ${account.alias} (${account.id})`);
     return cachedClientMap[cacheKey];
   }
+
+  logger.debug(`Initializing Search Console client for ${account.alias} (ID: ${account.id}, Engine: ${account.engine})`);
 
   // 2. Load Tokens
   const tokens = await loadTokensForAccount(account);
@@ -51,16 +55,18 @@ export async function getSearchConsoleClient(siteUrl?: string, accountId?: strin
 
       // Check for expiry (refresh if needed)
       if (tokens.expiry_date && tokens.expiry_date <= Date.now()) {
+        logger.debug(`Tokens expired for ${account.alias}, refreshing...`);
         const { credentials } = await oauth2Client.refreshAccessToken();
         await saveTokensForAccount(account, credentials);
         oauth2Client.setCredentials(credentials);
       }
 
       const client = google.searchconsole({ version: 'v1', auth: oauth2Client });
+      logger.debug(`Client successfully initialized with OAuth2 for ${account.alias}`);
       cachedClientMap[cacheKey] = client;
       return client;
     } catch (error) {
-      console.error(`Failed to use tokens for account ${account.alias}:`, (error as Error).message);
+      logger.error(`Failed to use tokens for account ${account.alias}:`, (error as Error).message);
     }
   }
 
@@ -72,6 +78,7 @@ export async function getSearchConsoleClient(siteUrl?: string, accountId?: strin
     });
     const client = google.searchconsole({ version: 'v1', auth });
     cachedClientMap[cacheKey] = client;
+    logger.debug(`Client initialized with Service Account Path for ${account.alias}`);
     return client;
   }
 

@@ -58,6 +58,8 @@ import { dirname } from 'path';
 import { getStartedHandler, getStartedToolName, getStartedToolDescription, getStartedToolSchema } from "./common/tools/get-started.js";
 import { registerPrompts } from "./prompts/index.js";
 import { jsonToCsv } from "./common/utils/csv.js";
+import { runDiagnostics } from "./common/diagnostics.js";
+import { logger } from "./utils/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -114,6 +116,7 @@ server.tool(
             results = [];
           }
 
+          const rawCount = results.length;
           // Boundary Filtering: Honor the website in the config
           if (account.websites && account.websites.length > 0) {
             results = results.filter(site => {
@@ -127,11 +130,18 @@ server.tool(
 
               try {
                 const normalizedSite = normalizeWebsite(url).value;
-                return account.websites!.some(w => normalizeWebsite(w).value === normalizedSite);
+                const isMatch = account.websites!.some(w => normalizeWebsite(w).value === normalizedSite);
+                if (!isMatch) {
+                  logger.debug(`Filtered out site ${url} for account ${account.alias} (not in whitelist)`);
+                }
+                return isMatch;
               } catch {
                 return account.websites!.includes(url);
               }
             });
+            logger.debug(`Account ${account.alias}: ${results.length}/${rawCount} sites kept after filtering.`);
+          } else {
+            logger.debug(`Account ${account.alias}: Found ${results.length} sites (no filtering).`);
           }
 
           return {
@@ -140,6 +150,7 @@ server.tool(
             sites: results
           };
         } catch (e) {
+          logger.error(`Failed to list sites for account ${account.alias}:`, (e as Error).message);
           return {
             account: account.alias,
             accountId: account.id,
@@ -2591,8 +2602,24 @@ If any site has a 'critical' or 'warning' status:
   }
 );
 
-// Register additional prompts
 registerPrompts(server);
+
+// Diagnostics Tool
+server.tool(
+  "diagnostics",
+  "Run connectivity diagnostics for all connected accounts. Use this to troubleshoot '0 results' or authentication issues.",
+  {},
+  async () => {
+    try {
+      const results = await runDiagnostics();
+      return {
+        content: [{ type: "text", text: JSON.stringify(results, null, 2) }]
+      };
+    } catch (error) {
+      return formatError(error);
+    }
+  }
+);
 
 async function main() {
   const command = process.argv[2];
@@ -2619,6 +2646,18 @@ async function main() {
   if (command === 'login') {
     const { login } = await import('./setup.js');
     await login();
+    return;
+  }
+
+  if (command === 'diagnostics') {
+    const results = await runDiagnostics();
+    console.log(JSON.stringify(results, null, 2));
+    return;
+  }
+
+  if (command === 'sites') {
+    const { main: accountsMain } = await import('./accounts.js');
+    await accountsMain(['list']);
     return;
   }
 

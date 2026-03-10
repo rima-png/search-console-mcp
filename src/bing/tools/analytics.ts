@@ -1,4 +1,5 @@
 import { getBingClient, BingQueryStats, BingPageStats, BingQueryPageStats, BingRankAndTrafficStats } from '../client.js';
+import { parseMicrosoftDate, startOfDay, endOfDay } from '../../common/utils/dates.js';
 
 /**
  * Get query performance stats for a Bing site with optional date filtering.
@@ -13,11 +14,11 @@ export async function getQueryStats(
 
     if (!startDate && !endDate) return stats;
 
-    const start = startDate ? new Date(startDate) : new Date(0);
-    const end = endDate ? new Date(endDate) : new Date();
+    const start = startDate ? startOfDay(new Date(startDate)) : new Date(0);
+    const end = endDate ? endOfDay(new Date(endDate)) : new Date();
 
     return stats.filter(row => {
-        const d = new Date(row.Date);
+        const d = parseMicrosoftDate(row.Date);
         return d >= start && d <= end;
     });
 }
@@ -35,11 +36,11 @@ export async function getPageStats(
 
     if (!startDate && !endDate) return stats;
 
-    const start = startDate ? new Date(startDate) : new Date(0);
-    const end = endDate ? new Date(endDate) : new Date();
+    const start = startDate ? startOfDay(new Date(startDate)) : new Date(0);
+    const end = endDate ? endOfDay(new Date(endDate)) : new Date();
 
     return stats.filter(row => {
-        const d = new Date(row.Date);
+        const d = parseMicrosoftDate(row.Date);
         return d >= start && d <= end;
     });
 }
@@ -58,11 +59,11 @@ export async function getPageQueryStats(
 
     if (!startDate && !endDate) return stats;
 
-    const start = startDate ? new Date(startDate) : new Date(0);
-    const end = endDate ? new Date(endDate) : new Date();
+    const start = startDate ? startOfDay(new Date(startDate)) : new Date(0);
+    const end = endDate ? endOfDay(new Date(endDate)) : new Date();
 
     return stats.filter(row => {
-        const d = new Date(row.Date);
+        const d = parseMicrosoftDate(row.Date);
         return d >= start && d <= end;
     });
 }
@@ -80,11 +81,11 @@ export async function getQueryPageStats(
 
     if (!startDate && !endDate) return stats;
 
-    const start = startDate ? new Date(startDate) : new Date(0);
-    const end = endDate ? new Date(endDate) : new Date();
+    const start = startDate ? startOfDay(new Date(startDate)) : new Date(0);
+    const end = endDate ? endOfDay(new Date(endDate)) : new Date();
 
     return stats.filter(row => {
-        const d = new Date(row.Date);
+        const d = parseMicrosoftDate(row.Date);
         return d >= start && d <= end;
     });
 }
@@ -140,10 +141,10 @@ export async function comparePeriods(
     const stats = await getRankAndTrafficStats(siteUrl);
 
     const getSummary = (start: string, end: string): PerformanceSummary => {
-        const s = new Date(start);
-        const e = new Date(end);
+        const s = startOfDay(new Date(start));
+        const e = endOfDay(new Date(end));
         const filtered = stats.filter((row: BingRankAndTrafficStats) => {
-            const d = new Date(row.Date);
+            const d = parseMicrosoftDate(row.Date);
             return d >= s && d <= e;
         });
 
@@ -215,7 +216,7 @@ export async function detectAnomalies(
     const stats = await getRankAndTrafficStats(siteUrl);
 
     // Sort by date ascending
-    const sorted = [...stats].sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime());
+    const sorted = [...stats].sort((a, b) => parseMicrosoftDate(a.Date).getTime() - parseMicrosoftDate(b.Date).getTime());
     if (sorted.length < 5) return [];
 
     const anomalies: BingAnomaly[] = [];
@@ -250,12 +251,12 @@ export async function getPerformanceSummary(siteUrl: string, days = 28): Promise
     const stats = await getRankAndTrafficStats(siteUrl);
 
     // Bing typically has historical data; filter for last N days
-    const endDate = new Date();
-    const startDate = new Date();
+    const endDate = endOfDay(new Date());
+    const startDate = startOfDay(new Date());
     startDate.setDate(endDate.getDate() - days);
 
     const filtered = stats.filter((row: BingRankAndTrafficStats) => {
-        const d = new Date(row.Date);
+        const d = parseMicrosoftDate(row.Date);
         return d >= startDate && d <= endDate;
     });
 
@@ -326,7 +327,7 @@ export async function detectTrends(
     const filterStats = (start: Date, end: Date) => {
         const map = new Map<string, number>();
         allStats.forEach(stat => {
-            const d = new Date(stat.Date);
+            const d = parseMicrosoftDate(stat.Date);
             if (d >= start && d <= end) {
                 map.set(stat.Query, (map.get(stat.Query) || 0) + stat.Clicks);
             }

@@ -1,5 +1,6 @@
 import { detectAnomalies, BingAnomaly as AnomalyItem, getRankAndTrafficStats } from './analytics.js';
 import { BingRankAndTrafficStats } from '../client.js';
+import { parseMicrosoftDate, startOfDay, endOfDay } from '../../common/utils/dates.js';
 
 /**
  * Result of a traffic drop attribution analysis.
@@ -66,8 +67,8 @@ export async function analyzeDropAttribution(
 
     // Check for algorithm updates within 2 days of the drop
     const possibleUpdate = ALGORITHM_UPDATES.find(u => {
-        const uDate = new Date(u.date);
-        const dDate = new Date(dropDate);
+        const uDate = startOfDay(new Date(u.date));
+        const dDate = startOfDay(parseMicrosoftDate(dropDate));
         const diff = Math.abs(dDate.getTime() - uDate.getTime()) / (1000 * 60 * 60 * 24);
         return diff <= 2;
     });
@@ -147,14 +148,15 @@ export async function getTimeSeriesInsights(
 
     const rawRows = await getRankAndTrafficStats(siteUrl);
     // Sort rows by date ascending
-    const rows = rawRows.sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime());
+    const rows = rawRows.sort((a, b) => parseMicrosoftDate(a.Date).getTime() - parseMicrosoftDate(b.Date).getTime());
 
     // Filter by date range if provided
     let startIndex = 0;
     let endIndex = rows.length;
 
     if (options.startDate) {
-        startIndex = rows.findIndex(r => r.Date >= options.startDate!);
+        const s = startOfDay(new Date(options.startDate)).getTime();
+        startIndex = rows.findIndex(r => parseMicrosoftDate(r.Date).getTime() >= s);
         // If no date is >= startDate, then all dates are < startDate (since sorted ascending)
         if (startIndex === -1) startIndex = rows.length;
     } else if (options.days) {
@@ -162,8 +164,9 @@ export async function getTimeSeriesInsights(
     }
 
     if (options.endDate) {
+        const e = endOfDay(new Date(options.endDate)).getTime();
         // find index where date > endDate
-        endIndex = rows.findIndex(r => r.Date > options.endDate!);
+        endIndex = rows.findIndex(r => parseMicrosoftDate(r.Date).getTime() > e);
         if (endIndex === -1) endIndex = rows.length;
     }
 
@@ -207,7 +210,7 @@ export async function getTimeSeriesInsights(
         }> = {};
 
         data.forEach(d => {
-            const date = new Date(d.date);
+            const date = parseMicrosoftDate(d.date);
             const day = date.getUTCDay();
             const diff = date.getUTCDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
             const monday = new Date(date);
@@ -285,7 +288,7 @@ export async function getTimeSeriesInsights(
         const firstMetric = metrics[0];
         const dowStats: number[][] = [[], [], [], [], [], [], []];
         data.forEach(d => {
-            const day = new Date(d.date).getDay();
+            const day = parseMicrosoftDate(d.date).getDay();
             dowStats[day].push(d.metrics[firstMetric]);
         });
 
@@ -298,7 +301,7 @@ export async function getTimeSeriesInsights(
 
         const peakDay = dowAverages.indexOf(Math.max(...dowAverages));
         history.forEach(h => {
-            if (h.date && new Date(h.date).getDay() === peakDay) h.isSeasonalPeak = true;
+            if (h.date && parseMicrosoftDate(h.date).getDay() === peakDay) h.isSeasonalPeak = true;
         });
     }
 
