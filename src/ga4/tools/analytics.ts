@@ -26,8 +26,11 @@ export function clearAnalyticsCache() {
 function generateCacheKey(options: any): string {
     // Recursive stable stringify to handle nested object key ordering
     const sortObject = (obj: any): any => {
-        if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) {
+        if (obj === null || typeof obj !== 'object') {
             return obj;
+        }
+        if (Array.isArray(obj)) {
+            return obj.map(sortObject);
         }
         const sorted: any = {};
         Object.keys(obj).sort().forEach(key => {
@@ -184,7 +187,8 @@ export async function getPagePerformance(
     endDate: string,
     pagePath?: string,
     limit: number = 50,
-    accountId?: string
+    accountId?: string,
+    offset?: number
 ) {
     const dimensionFilter = pagePath ? {
         filter: {
@@ -213,6 +217,7 @@ export async function getPagePerformance(
         ],
         dimensionFilter,
         limit,
+        offset,
         orderBys: [{ metric: { metricName: 'sessions' }, desc: true }]
     });
 
@@ -225,7 +230,8 @@ export async function getTrafficSources(
     endDate: string,
     channelGroup?: string,
     limit: number = 50,
-    accountId?: string
+    accountId?: string,
+    offset?: number
 ) {
     const dimensionFilter = channelGroup ? {
         filter: {
@@ -247,6 +253,7 @@ export async function getTrafficSources(
         metrics: ['sessions'],
         dimensionFilter,
         limit,
+        offset,
         orderBys: [{ metric: { metricName: 'sessions' }, desc: true }]
     });
 
@@ -258,7 +265,8 @@ export async function getOrganicLandingPages(
     startDate: string,
     endDate: string,
     limit: number = 50,
-    accountId?: string
+    accountId?: string,
+    offset?: number
 ) {
     const response = await queryAnalytics({
         propertyId,
@@ -284,6 +292,7 @@ export async function getOrganicLandingPages(
             }
         },
         limit,
+        offset,
         orderBys: [{ metric: { metricName: 'sessions' }, desc: true }]
     });
 
@@ -295,7 +304,8 @@ export async function getContentPerformance(
     startDate: string,
     endDate: string,
     limit: number = 50,
-    accountId?: string
+    accountId?: string,
+    offset?: number
 ) {
     // Try to query content group first?
     // Not sure if contentGroup is standard. 'contentGroup' is a standard dimension.
@@ -309,6 +319,7 @@ export async function getContentPerformance(
         dimensions: ['contentGroup'], // Fallback to pagePath if needed? No, separate tool or option.
         metrics: ['sessions', 'averageSessionDuration', 'conversions'],
         limit,
+        offset,
         orderBys: [{ metric: { metricName: 'sessions' }, desc: true }]
     });
 
@@ -329,7 +340,8 @@ export async function getEcommerce(
     startDate: string,
     endDate: string,
     limit: number = 50,
-    accountId?: string
+    accountId?: string,
+    offset?: number
 ) {
     const response = await queryAnalytics({
         propertyId,
@@ -339,6 +351,7 @@ export async function getEcommerce(
         dimensions: ['itemName'],
         metrics: ['itemRevenue', 'itemsPurchased', 'ecommercePurchases'],
         limit,
+        offset,
         orderBys: [{ metric: { metricName: 'itemRevenue' }, desc: true }]
     });
 
