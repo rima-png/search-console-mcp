@@ -160,6 +160,13 @@ This document outlines the planned features and improvements for this project.
 - **Enhanced Bing Analytics**:
   - Added `startDate`, `endDate`, and `limit` parameters to `bing_analytics_query`.
 
+### v1.13.5 - Auth CLI Hardening
+
+- **Auth CLI Commands**:
+  - `auth status` - Reports account state from encrypted config (`~/.search-console-mcp-config.enc`) and existing env/legacy fallbacks
+  - `auth revoke` - Revokes account access via existing token/account cleanup flows (Google keychain cleanup + account removal)
+- **Security Wording Updates**: Documentation now consistently references encrypted config storage and keychain-backed token handling.
+
 ---
 
 ## 🚧 In Progress
