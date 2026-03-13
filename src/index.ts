@@ -57,11 +57,12 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { getStartedHandler, getStartedToolName, getStartedToolDescription, getStartedToolSchema } from "./common/tools/get-started.js";
 import { registerPrompts } from "./prompts/index.js";
-import { jsonToCsv } from "./common/utils/csv.js";
 import { runDiagnostics } from "./common/diagnostics.js";
 import { logger } from "./utils/logger.js";
 import { createLegacyCommandAdapters } from "./cli/adapters.js";
 import { routeLegacyCommand } from "./cli/router.js";
+import { getAnalyticsQueryRawRecords, getBingAnalyticsQueryRawRecords, getGa4PagePerformanceRawRecords } from "./cli/commands/analytics.js";
+import { formatRecords } from "./cli/output/formatter.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -426,29 +427,10 @@ server.tool(
   },
   async (args) => {
     try {
-      const result = await analytics.queryAnalytics(args);
-
-      if (args.format === 'csv') {
-        const flatData = result.map(row => {
-          const newRow: any = { ...row };
-          if (row.keys && Array.isArray(row.keys)) {
-            row.keys.forEach((keyVal, idx) => {
-              const dimName = args.dimensions && args.dimensions[idx]
-                ? args.dimensions[idx]
-                : `dimension_${idx + 1}`;
-              newRow[dimName] = keyVal;
-            });
-            delete newRow.keys;
-          }
-          return newRow;
-        });
-        return {
-          content: [{ type: "text", text: jsonToCsv(flatData) }]
-        };
-      }
-
+      const rawRecords = await getAnalyticsQueryRawRecords(args);
+      const mode = args.format === "csv" ? "csv" : "json";
       return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: formatRecords(rawRecords, mode) }]
       };
     } catch (error) {
       return formatError(error);
@@ -1283,20 +1265,10 @@ server.tool(
   },
   async ({ siteUrl, startDate, endDate, limit, format }) => {
     try {
-      let results = await bingAnalytics.getQueryStats(siteUrl, startDate, endDate);
-
-      if (limit) {
-        results = results.slice(0, limit);
-      }
-
-      if (format === 'csv') {
-        return {
-          content: [{ type: "text", text: jsonToCsv(results) }]
-        };
-      }
-
+      const rawRecords = await getBingAnalyticsQueryRawRecords({ siteUrl, startDate, endDate, limit });
+      const mode = format === "csv" ? "csv" : "json";
       return {
-        content: [{ type: "text", text: JSON.stringify(results, null, 2) }]
+        content: [{ type: "text", text: formatRecords(rawRecords, mode) }]
       };
     } catch (error) {
       return formatError(error);
@@ -1802,14 +1774,10 @@ server.tool(
   },
   async ({ propertyId, accountId, startDate, endDate, pagePath, limit, offset, format }) => {
     try {
-      const result = await ga4Analytics.getPagePerformance(propertyId, startDate, endDate, pagePath, limit, accountId, offset);
-      if (format === 'csv') {
-        return {
-          content: [{ type: "text", text: jsonToCsv(result) }]
-        };
-      }
+      const rawRecords = await getGa4PagePerformanceRawRecords({ propertyId, accountId, startDate, endDate, pagePath, limit, offset });
+      const mode = format === "csv" ? "csv" : "json";
       return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: formatRecords(rawRecords, mode) }]
       };
     } catch (error) {
       return formatError(error);
