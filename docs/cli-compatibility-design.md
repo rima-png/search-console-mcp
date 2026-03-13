@@ -11,6 +11,12 @@
 3. `src/index.ts` invokes the shared router first; if no legacy command is matched, it proceeds to start MCP transport on stdio.
 4. `cli/index.ts` invokes the same shared router and otherwise shows CLI help.
 
+
+## CLI Auth Implementation References
+- Interactive auth/login flows are implemented in `src/setup.ts` (`setup`, `login`, `logout`).
+- Account persistence and account resolution are implemented in `src/common/auth/config.ts` and `src/common/auth/resolver.ts`.
+- OAuth client helpers are implemented in `src/google/client.ts`.
+
 ## Bin Compatibility
 - Keep existing `search-console-mcp` bin mapped to MCP bootstrap semantics.
 - Add a second bin (`search-console-cli`) mapped to the new CLI dispatcher.
