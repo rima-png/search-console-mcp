@@ -173,6 +173,11 @@ This document outlines the planned features and improvements for this project.
 
 - **Performance Optimizations**: Further reducing API footprint across all insight modules.
 - **Enhanced Documentation**: Mintlify-driven user guides and cross-platform strategies. SEO upgrade (title, description, keywords)
+- **CLI Adapter-First Execution**:
+  - Inventory tool modules in `src/google/tools`, `src/bing/tools`, `src/ga4/tools`, and `src/common/tools` before scheduling CLI feature work.
+  - Map each planned CLI command to an existing tool function/module first.
+  - Only add new core logic when no existing tool equivalence is available; shared logic must live in `src/common` for MCP/CLI reuse.
+  - Maintain `CLI.md` tracking matrix (`CLI command`, `backing module`, `new logic required (Y/N)`) as the source of truth for command implementation readiness.
 
 ---
 
