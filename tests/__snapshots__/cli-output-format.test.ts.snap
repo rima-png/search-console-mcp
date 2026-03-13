@@ -1,0 +1,37 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`cli output formatter > formats csv output consistently 1`] = `
+"site,clicks,ctr,active
+https://example.com,120,0.2,true
+https://example.org,98,0.15,false"
+`;
+
+exports[`cli output formatter > formats json output consistently 1`] = `
+"[
+  {
+    "site": "https://example.com",
+    "clicks": 120,
+    "ctr": 0.2,
+    "active": true
+  },
+  {
+    "site": "https://example.org",
+    "clicks": 98,
+    "ctr": 0.15,
+    "active": false
+  }
+]"
+`;
+
+exports[`cli output formatter > formats table output consistently 1`] = `
+"site                | clicks | ctr  | active
+--------------------+--------+------+-------
+https://example.com | 120    | 0.2  | true  
+https://example.org | 98     | 0.15 | false "
+`;
+
+exports[`cli output formatter > formats tsv output consistently 1`] = `
+"site	clicks	ctr	active
+https://example.com	120	0.2	true
+https://example.org	98	0.15	false"
+`;
