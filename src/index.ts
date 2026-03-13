@@ -60,6 +60,8 @@ import { registerPrompts } from "./prompts/index.js";
 import { jsonToCsv } from "./common/utils/csv.js";
 import { runDiagnostics } from "./common/diagnostics.js";
 import { logger } from "./utils/logger.js";
+import { createLegacyCommandAdapters } from "./cli/adapters.js";
+import { routeLegacyCommand } from "./cli/router.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -2629,40 +2631,8 @@ server.tool(
 async function main() {
   const command = process.argv[2];
 
-  // Handle standalone commands
-  if (command === 'setup') {
-    const { main: setupMain } = await import('./setup.js');
-    await setupMain();
-    return;
-  }
-
-  if (command === 'account' || command === 'accounts') {
-    const { main: accountsMain } = await import('./accounts.js');
-    await accountsMain(process.argv.slice(3));
-    return;
-  }
-
-  if (command === 'logout') {
-    const { runLogout } = await import('./setup.js');
-    await runLogout();
-    return;
-  }
-
-  if (command === 'login') {
-    const { login } = await import('./setup.js');
-    await login();
-    return;
-  }
-
-  if (command === 'diagnostics') {
-    const results = await runDiagnostics();
-    console.log(JSON.stringify(results, null, 2));
-    return;
-  }
-
-  if (command === 'sites') {
-    const { main: accountsMain } = await import('./accounts.js');
-    await accountsMain(['list']);
+  const handled = await routeLegacyCommand(command, process.argv.slice(3), await createLegacyCommandAdapters());
+  if (handled) {
     return;
   }
 

@@ -6,7 +6,8 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "search-console-mcp": "./dist/index.js"
+    "search-console-mcp": "./dist/index.js",
+    "search-console-cli": "./dist/cli/index.js"
   },
   "files": [
     "dist",
@@ -14,7 +15,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && tsc -p tsconfig.cli.json",
     "test": "vitest run",
     "docs": "typedoc",
     "deploy:registry": "mcp-publisher publish",
