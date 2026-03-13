@@ -1,6 +1,6 @@
 import { LegacyCommand, LegacyCommandAdapters } from './adapters.js';
 
-const legacyCommands: LegacyCommand[] = ['setup', 'account', 'accounts', 'logout', 'login', 'diagnostics', 'sites'];
+const legacyCommands: LegacyCommand[] = ['setup', 'account', 'accounts', 'logout', 'login', 'auth', 'diagnostics', 'sites'];
 
 export function shouldStartMcp(command?: string): boolean {
   return !command || !legacyCommands.includes(command as LegacyCommand);
@@ -28,6 +28,9 @@ export async function routeLegacyCommand(
       return true;
     case 'login':
       await adapters.login();
+      return true;
+    case 'auth':
+      await adapters.auth(args);
       return true;
     case 'diagnostics':
       await adapters.diagnostics();

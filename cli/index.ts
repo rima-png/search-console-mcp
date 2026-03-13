@@ -4,7 +4,7 @@ import { createLegacyCommandAdapters } from '../src/cli/adapters.js';
 import { routeLegacyCommand } from '../src/cli/router.js';
 
 function printHelp(): void {
-  console.log(`Search Console CLI\n\nUsage:\n  search-console-cli <command> [options]\n\nLegacy commands:\n  setup\n  accounts\n  account\n  login\n  logout\n  diagnostics\n  sites`);
+  console.log(`Search Console CLI\n\nUsage:\n  search-console-cli <command> [options]\n\nLegacy commands:\n  setup\n  accounts\n  account\n  login\n  logout\n  auth\n  diagnostics\n  sites`);
 }
 
 async function main() {

@@ -29,13 +29,23 @@ npx search-console-mcp setup
 
 ### Logout & Management
 
-You can manage your sessions directly from the CLI:
+You can inspect and revoke sessions directly from the CLI (state is read from encrypted config at `~/.search-console-mcp-config.enc`, with keychain-backed OAuth token handling):
 
 ```bash
-# Logout of the default account
-npx search-console-mcp logout
+# Show current auth status (includes legacy/env fallbacks when present)
+npx search-console-mcp auth status
 
-# Logout of a specific account by email
+# Revoke one account (cleans keychain tokens for Google OAuth accounts)
+npx search-console-mcp auth revoke --account=user@gmail.com
+
+# Revoke all configured accounts
+npx search-console-mcp auth revoke --all
+```
+
+Legacy compatibility commands still work:
+
+```bash
+npx search-console-mcp logout
 npx search-console-mcp logout user@gmail.com
 ```
 

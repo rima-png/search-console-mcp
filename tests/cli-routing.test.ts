@@ -8,6 +8,7 @@ function createAdapters() {
     accounts: vi.fn(async (_args: string[]) => {}),
     logout: vi.fn(async () => {}),
     login: vi.fn(async () => {}),
+    auth: vi.fn(async (_args: string[]) => {}),
     diagnostics: vi.fn(async () => {}),
     sites: vi.fn(async () => {})
   };
@@ -37,6 +38,9 @@ describe('CLI command routing compatibility', () => {
 
     expect(await routeLegacyCommand('logout', [], adapters)).toBe(true);
     expect(adapters.logout).toHaveBeenCalledTimes(1);
+
+    expect(await routeLegacyCommand('auth', ['status'], adapters)).toBe(true);
+    expect(adapters.auth).toHaveBeenCalledWith(['status']);
 
     expect(await routeLegacyCommand('diagnostics', [], adapters)).toBe(true);
     expect(adapters.diagnostics).toHaveBeenCalledTimes(1);
