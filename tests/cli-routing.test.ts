@@ -10,7 +10,8 @@ function createAdapters() {
     login: vi.fn(async () => {}),
     auth: vi.fn(async (_args: string[]) => {}),
     diagnostics: vi.fn(async () => {}),
-    sites: vi.fn(async () => {})
+    sites: vi.fn(async () => {}),
+    config: vi.fn(async (_args: string[]) => {})
   };
 
   return adapters;
@@ -19,6 +20,11 @@ function createAdapters() {
 describe('CLI command routing compatibility', () => {
   it('keeps MCP mode active when no command is provided', () => {
     expect(shouldStartMcp(undefined)).toBe(true);
+  });
+
+
+  it('keeps MCP mode disabled for legacy config command', () => {
+    expect(shouldStartMcp('config')).toBe(false);
   });
 
   it('routes legacy commands through shared adapters', async () => {
@@ -47,6 +53,9 @@ describe('CLI command routing compatibility', () => {
 
     expect(await routeLegacyCommand('sites', [], adapters)).toBe(true);
     expect(adapters.sites).toHaveBeenCalledTimes(1);
+
+    expect(await routeLegacyCommand('config', ['get', 'credentials.path'], adapters)).toBe(true);
+    expect(adapters.config).toHaveBeenCalledWith(['get', 'credentials.path']);
   });
 
   it('does not consume unknown commands as legacy commands', async () => {
