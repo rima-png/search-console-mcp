@@ -150,7 +150,18 @@ export async function getGA4Client(propertyId?: string, accountId?: string): Pro
         return ga4Client;
     }
 
-    // 4. Fallback to Environment Variables (Google Application Credentials)
+    // 4. Support inline JSON (e.g. Vercel/serverless GOOGLE_SERVICE_ACCOUNT_JSON)
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+        const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+        const auth = new google.auth.GoogleAuth({ credentials });
+        const authClient = await auth.getClient();
+        client = new BetaAnalyticsDataClient({ authClient: authClient as any });
+        const ga4Client = new GA4Client(client, targetPropertyId);
+        cacheClient(cacheKey, ga4Client);
+        return ga4Client;
+    }
+
+    // 5. Fallback to Environment Variables (Google Application Credentials path)
     if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
         client = new BetaAnalyticsDataClient({
             keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS

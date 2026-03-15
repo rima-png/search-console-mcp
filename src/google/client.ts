@@ -82,7 +82,19 @@ export async function getSearchConsoleClient(siteUrl?: string, accountId?: strin
     return client;
   }
 
-  // 4. Fallback to Service Account (Environment Variables) - Only if no specific account was resolved or it was a legacy fallback
+  // 4. Fallback to Service Account (Environment Variables) - for serverless (e.g. Vercel) or legacy
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: SCOPES
+    });
+    const client = google.searchconsole({ version: 'v1', auth });
+    cachedClientMap[cacheKey] = client;
+    logger.debug(`Client initialized with GOOGLE_SERVICE_ACCOUNT_JSON for ${account.alias}`);
+    return client;
+  }
+
   if (!accountId) {
     if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       const auth = new google.auth.GoogleAuth({

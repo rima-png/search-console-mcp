@@ -116,17 +116,18 @@ export async function loadConfig(): Promise<AppConfig> {
     }
 
     // 3. Check for Google Environment Variables (Legacy)
-    const hasServiceAccount = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    const hasServiceAccountPath = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    const hasServiceAccountJson = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
     const hasJwt = !!process.env.GOOGLE_CLIENT_EMAIL && !!process.env.GOOGLE_PRIVATE_KEY;
 
-    if (hasServiceAccount || hasJwt) {
+    if (hasServiceAccountPath || hasServiceAccountJson || hasJwt) {
         const id = 'legacy_google';
         if (!config.accounts[id]) {
             config.accounts[id] = {
                 id,
                 engine: 'google',
                 alias: process.env.GOOGLE_CLIENT_EMAIL || 'Service Account (env)',
-                serviceAccountPath: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+                serviceAccountPath: process.env.GOOGLE_APPLICATION_CREDENTIALS || undefined,
                 isLegacy: true
             };
         }
@@ -167,6 +168,21 @@ export async function loadConfig(): Promise<AppConfig> {
                 engine: 'bing',
                 alias: 'Bing API Key (env)',
                 apiKey: bingApiKey,
+                isLegacy: true
+            };
+        }
+    }
+
+    // 5. GA4 Property ID for serverless (e.g. Vercel) when using GOOGLE_SERVICE_ACCOUNT_JSON
+    const ga4PropertyId = process.env.GA4_PROPERTY_ID;
+    if (ga4PropertyId) {
+        const id = 'legacy_ga4';
+        if (!config.accounts[id]) {
+            config.accounts[id] = {
+                id,
+                engine: 'ga4',
+                alias: 'GA4 (env)',
+                ga4PropertyId,
                 isLegacy: true
             };
         }
