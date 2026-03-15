@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import 'dotenv/config';
-import { readFileSync, existsSync, statSync, writeFileSync } from 'fs';
+import { readFileSync, existsSync, statSync, writeFileSync, mkdirSync } from 'fs';
 import { resolve, dirname, extname, join } from 'path';
 import { createInterface } from 'readline';
 import { homedir } from 'os';
@@ -15,6 +15,30 @@ import { colors, printBoxHeader, printStatusLine } from './utils/ui.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+const GLOBAL_CLI_CONFIG_DIR = join(homedir(), '.search-console-mcp');
+const GLOBAL_CLI_CONFIG_PATH = join(GLOBAL_CLI_CONFIG_DIR, 'config.json');
+
+function persistCredentialsPath(credentialsPath: string): void {
+    try {
+        if (!existsSync(GLOBAL_CLI_CONFIG_DIR)) {
+            mkdirSync(GLOBAL_CLI_CONFIG_DIR, { recursive: true, mode: 0o700 });
+        }
+
+        let config: Record<string, unknown> = {};
+        if (existsSync(GLOBAL_CLI_CONFIG_PATH)) {
+            const raw = readFileSync(GLOBAL_CLI_CONFIG_PATH, 'utf8').trim();
+            if (raw) {
+                config = JSON.parse(raw) as Record<string, unknown>;
+            }
+        }
+
+        config.credentialsPath = credentialsPath;
+        writeFileSync(GLOBAL_CLI_CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+    } catch {
+        // Persisting CLI preferences is best-effort and should never block setup.
+    }
+}
 
 const rl = createInterface({
     input: process.stdin,
@@ -426,6 +450,7 @@ async function setupServiceAccount() {
         serviceAccountPath: credentialsPath
     };
     await updateAccount(account);
+    persistCredentialsPath(credentialsPath);
     printSuccess(`Successfully added account ${alias}!`);
 
     printStep(4, 'Configure your MCP client');

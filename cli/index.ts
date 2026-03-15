@@ -2,14 +2,18 @@
 import 'dotenv/config';
 import { createLegacyCommandAdapters } from '../src/cli/adapters.js';
 import { routeLegacyCommand } from '../src/cli/router.js';
+import { applyGlobalFlags, parseGlobalFlags } from '../src/cli/global-flags.js';
 
 function printHelp(): void {
-  console.log(`Search Console CLI\n\nUsage:\n  search-console-cli <command> [options]\n\nLegacy commands:\n  setup\n  accounts\n  account\n  login\n  logout\n  auth\n  diagnostics\n  sites`);
+  console.log(`Search Console CLI\n\nUsage:\n  search-console-mcp <command> [options]\n\nLegacy commands:\n  setup\n  accounts\n  account\n  login\n  logout\n  auth\n  diagnostics\n  sites
+  config`);
 }
 
 async function main() {
-  const command = process.argv[2];
-  const handled = await routeLegacyCommand(command, process.argv.slice(3), await createLegacyCommandAdapters());
+  const parsed = parseGlobalFlags(process.argv.slice(2));
+  const argv = applyGlobalFlags(parsed);
+  const command = argv[0];
+  const handled = await routeLegacyCommand(command, argv.slice(1), await createLegacyCommandAdapters());
 
   if (handled) {
     return;

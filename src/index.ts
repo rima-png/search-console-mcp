@@ -61,6 +61,7 @@ import { runDiagnostics } from "./common/diagnostics.js";
 import { logger } from "./utils/logger.js";
 import { createLegacyCommandAdapters } from "./cli/adapters.js";
 import { routeLegacyCommand } from "./cli/router.js";
+import { applyGlobalFlags, parseGlobalFlags } from "./cli/global-flags.js";
 import { getAnalyticsQueryRawRecords, getBingAnalyticsQueryRawRecords, getGa4PagePerformanceRawRecords } from "./cli/commands/analytics.js";
 import { formatRecords } from "./cli/output/formatter.js";
 
@@ -2597,9 +2598,11 @@ server.tool(
 );
 
 async function main() {
-  const command = process.argv[2];
+  const parsed = parseGlobalFlags(process.argv.slice(2));
+  const argv = applyGlobalFlags(parsed);
+  const command = argv[0];
 
-  const handled = await routeLegacyCommand(command, process.argv.slice(3), await createLegacyCommandAdapters());
+  const handled = await routeLegacyCommand(command, argv.slice(1), await createLegacyCommandAdapters());
   if (handled) {
     return;
   }

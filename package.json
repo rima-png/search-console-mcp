@@ -19,7 +19,9 @@
     "test": "vitest run",
     "docs": "typedoc",
     "deploy:registry": "mcp-publisher publish",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "lint": "tsc --noEmit && tsc -p tsconfig.cli.json --noEmit",
+    "test:cli": "vitest run tests/cli-routing.test.ts tests/auth-cli.test.ts tests/cli-output-format.test.ts tests/global-flags.test.ts"
   },
   "keywords": [
     "mcp",

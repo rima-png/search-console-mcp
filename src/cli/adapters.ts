@@ -1,6 +1,6 @@
 import { runDiagnostics } from "../common/diagnostics.js";
 
-export type LegacyCommand = 'setup' | 'account' | 'accounts' | 'logout' | 'login' | 'auth' | 'diagnostics' | 'sites';
+export type LegacyCommand = 'setup' | 'account' | 'accounts' | 'logout' | 'login' | 'auth' | 'diagnostics' | 'sites' | 'config';
 
 export interface LegacyCommandAdapters {
   setup: () => Promise<void>;
@@ -10,6 +10,7 @@ export interface LegacyCommandAdapters {
   auth: (args: string[]) => Promise<void>;
   diagnostics: () => Promise<void>;
   sites: () => Promise<void>;
+  config: (args: string[]) => Promise<void>;
 }
 
 export async function createLegacyCommandAdapters(): Promise<LegacyCommandAdapters> {
@@ -41,6 +42,10 @@ export async function createLegacyCommandAdapters(): Promise<LegacyCommandAdapte
     sites: async () => {
       const { main } = await import('../accounts.js');
       await main(['list']);
+    },
+    config: async (args: string[]) => {
+      const { main } = await import('./config.js');
+      await main(args);
     }
   };
 }
